@@ -2,9 +2,9 @@
 
 1v1 online chess with 66+ mutator rules that change the game every 3 moves. Built with Node.js, Express, Socket.IO, and chess.js.
 
-Based on a concept by [DougDoug](https:twitch.tv/dougdoug)
+Based on a concept by [DougDoug](https://twitch.tv/dougdoug)
 
-Play at [playanarchychess.com](https:playanarchychess.com).
+Play at [playanarchychess.com](https://playanarchychess.com).
 
 ## Features
 
