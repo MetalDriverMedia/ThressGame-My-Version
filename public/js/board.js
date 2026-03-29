@@ -623,7 +623,7 @@ export function getLegalMovesForSquare(square) {
     }
 
     // Destination-based restrictions
-    if (isRuleActiveClient('god_kings')) {
+    if (isRuleActiveClient('god_kings') || isRuleActiveClient('mind_control')) {
       targets = targets.filter(to => {
         const target = pieces.get(to);
         return !target || target.type !== 'k';

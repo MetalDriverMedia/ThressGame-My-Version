@@ -723,6 +723,17 @@ const hooks = {
       }
       syncChessFromBoard(room, board);
     },
+    getLegalMoveModifiers(room) {
+      const board = getBoardFromRoom(room);
+      return (moves) => {
+        // Block king captures on the same turn Mind Control activates
+        const filtered = moves.filter(m => {
+          const target = board.get(m.to);
+          return !target || target.type !== 'k';
+        });
+        return filtered.length > 0 ? filtered : moves;
+      };
+    },
   },
 
   // --- Drafted for Battle -----------------------------------------
