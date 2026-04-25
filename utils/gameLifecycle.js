@@ -123,7 +123,7 @@ function checkCoinFlipSkipTurn(room, io, forColor) {
   const fen = room.chess.fen();
   const parts = fen.split(' ');
   parts[1] = parts[1] === 'w' ? 'b' : 'w'; // Swap active color
-  room.chess.load(parts.join(' '));
+  room.chess.load(parts.join(' '), { skipValidation: true });
 
   // Notify clients
   io.to(room.roomCode).emit('moveApplied', {

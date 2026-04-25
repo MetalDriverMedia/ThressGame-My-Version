@@ -1,6 +1,6 @@
 {
   "name": "chess",
-  "version": "1.0.57",
+  "version": "1.0.58",
   "description": "1v1 online chess with room codes and mutators",
   "main": "server.js",
   "scripts": {

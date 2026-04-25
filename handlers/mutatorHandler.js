@@ -63,7 +63,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       const fen = room.chess.fen();
       const parts = fen.split(' ');
       parts[1] = parts[1] === 'w' ? 'b' : 'w';
-      room.chess.load(parts.join(' '));
+      room.chess.load(parts.join(' '), { skipValidation: true });
 
       io.to(room.roomCode).emit('moveApplied', {
         from: null, to: null, san: '(blocked)', color: rps.attacker,
