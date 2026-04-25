@@ -257,8 +257,10 @@ function handleJoinBot(io, socket, gameManager, data, startGame, addBot) {
  * @param {Object} gameManager - GameManager instance
  */
 function handleListRooms(socket, gameManager) {
-  const rooms = gameManager.getPublicWaitingRooms();
-  socket.emit('roomsList', rooms);
+  socket.emit('roomsList', {
+    waiting: gameManager.getPublicWaitingRooms(),
+    active: gameManager.getSpectatableRooms(),
+  });
 }
 
 module.exports = {
