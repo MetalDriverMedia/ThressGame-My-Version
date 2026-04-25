@@ -125,59 +125,57 @@ export function stopRoomsPolling() {
 export function renderRoomsList(waitingRooms, activeRooms = []) {
   if (!elements.roomsList) return;
 
-  const hasWaiting = waitingRooms && waitingRooms.length > 0;
-  const hasActive = activeRooms && activeRooms.length > 0;
-
-  if (!hasWaiting && !hasActive) {
-    elements.roomsList.innerHTML = '<p class="rooms-empty">No open rooms. Create one!</p>';
-    return;
-  }
+  const waiting = waitingRooms || [];
+  const active = activeRooms || [];
 
   // --- Waiting rooms table ---
   let waitingTable = elements.roomsList.querySelector('.rooms-table:not(.active-games-table)');
-  if (hasWaiting) {
-    if (!waitingTable) {
-      waitingTable = document.createElement('table');
-      waitingTable.className = 'rooms-table';
-      waitingTable.innerHTML = '<thead><tr><th>Room</th><th>Host</th><th>Open Color</th><th></th></tr></thead><tbody></tbody>';
-      // Insert before active section or at end
-      const activeHeading = elements.roomsList.querySelector('.active-games-heading');
-      if (activeHeading) {
-        elements.roomsList.insertBefore(waitingTable, activeHeading);
-      } else {
-        elements.roomsList.appendChild(waitingTable);
-      }
+  if (!waitingTable) {
+    waitingTable = document.createElement('table');
+    waitingTable.className = 'rooms-table';
+    waitingTable.innerHTML = '<thead><tr><th>Room</th><th>Host</th><th>Open Color</th><th></th></tr></thead><tbody></tbody>';
+    // Insert before active section or at end
+    const activeHeading = elements.roomsList.querySelector('.active-games-heading');
+    if (activeHeading) {
+      elements.roomsList.insertBefore(waitingTable, activeHeading);
+    } else {
+      elements.roomsList.appendChild(waitingTable);
     }
-    _diffWaitingRows(waitingTable.querySelector('tbody'), waitingRooms);
-  } else if (waitingTable) {
-    waitingTable.remove();
   }
+  _diffWaitingRows(waitingTable.querySelector('tbody'), waiting);
+  waitingTable.style.display = waiting.length > 0 ? '' : 'none';
 
   // --- Active games section ---
   let activeHeading = elements.roomsList.querySelector('.active-games-heading');
   let activeTable = elements.roomsList.querySelector('.active-games-table');
-  if (hasActive) {
-    if (!activeHeading) {
-      activeHeading = document.createElement('h3');
-      activeHeading.className = 'active-games-heading';
-      activeHeading.textContent = 'Live Games';
-      elements.roomsList.appendChild(activeHeading);
-    }
-    if (!activeTable) {
-      activeTable = document.createElement('table');
-      activeTable.className = 'rooms-table active-games-table';
-      activeTable.innerHTML = '<thead><tr><th>White</th><th>Black</th><th>Viewers</th><th></th></tr></thead><tbody></tbody>';
-      elements.roomsList.appendChild(activeTable);
-    }
-    _diffActiveRows(activeTable.querySelector('tbody'), activeRooms);
-  } else {
-    if (activeHeading) activeHeading.remove();
-    if (activeTable) activeTable.remove();
+  if (!activeHeading) {
+    activeHeading = document.createElement('h3');
+    activeHeading.className = 'active-games-heading';
+    activeHeading.textContent = 'Live Games';
+    elements.roomsList.appendChild(activeHeading);
   }
+  if (!activeTable) {
+    activeTable = document.createElement('table');
+    activeTable.className = 'rooms-table active-games-table';
+    activeTable.innerHTML = '<thead><tr><th>White</th><th>Black</th><th>Viewers</th><th></th></tr></thead><tbody></tbody>';
+    elements.roomsList.appendChild(activeTable);
+  }
+  _diffActiveRows(activeTable.querySelector('tbody'), active);
+  activeHeading.style.display = active.length > 0 ? '' : 'none';
+  activeTable.style.display = active.length > 0 ? '' : 'none';
 
-  // Remove empty placeholder if present
-  const emptyMsg = elements.roomsList.querySelector('.rooms-empty');
-  if (emptyMsg) emptyMsg.remove();
+  // Show/hide empty placeholder
+  let emptyMsg = elements.roomsList.querySelector('.rooms-empty');
+  if (waiting.length === 0 && active.length === 0) {
+    if (!emptyMsg) {
+      emptyMsg = document.createElement('p');
+      emptyMsg.className = 'rooms-empty';
+      emptyMsg.textContent = 'No open rooms. Create one!';
+      elements.roomsList.appendChild(emptyMsg);
+    }
+  } else if (emptyMsg) {
+    emptyMsg.remove();
+  }
 }
 
 function _bindJoinBtn(btn) {
