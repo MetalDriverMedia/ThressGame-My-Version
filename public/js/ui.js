@@ -133,68 +133,155 @@ export function renderRoomsList(waitingRooms, activeRooms = []) {
     return;
   }
 
-  let html = '';
-
+  // --- Waiting rooms table ---
+  let waitingTable = elements.roomsList.querySelector('.rooms-table:not(.active-games-table)');
   if (hasWaiting) {
-    html += '<table class="rooms-table"><thead><tr>';
-    html += '<th>Room</th><th>Host</th><th>Open Color</th><th></th>';
-    html += '</tr></thead><tbody>';
-
-    waitingRooms.forEach(room => {
-      const openColor = room.openColor ? COLOR_NAMES[room.openColor] || room.openColor : 'Any';
-      html += `<tr class="room-row" data-code="${escapeHtml(room.roomCode)}">`;
-      html += `<td class="room-code-cell">${escapeHtml(room.roomCode)}</td>`;
-      html += `<td>${escapeHtml(room.creatorName || 'Unknown')}</td>`;
-      html += `<td>${openColor}</td>`;
-      html += `<td><button class="btn-primary btn-small room-join-btn" data-code="${escapeHtml(room.roomCode)}">Join</button></td>`;
-      html += '</tr>';
-    });
-
-    html += '</tbody></table>';
+    if (!waitingTable) {
+      waitingTable = document.createElement('table');
+      waitingTable.className = 'rooms-table';
+      waitingTable.innerHTML = '<thead><tr><th>Room</th><th>Host</th><th>Open Color</th><th></th></tr></thead><tbody></tbody>';
+      // Insert before active section or at end
+      const activeHeading = elements.roomsList.querySelector('.active-games-heading');
+      if (activeHeading) {
+        elements.roomsList.insertBefore(waitingTable, activeHeading);
+      } else {
+        elements.roomsList.appendChild(waitingTable);
+      }
+    }
+    _diffWaitingRows(waitingTable.querySelector('tbody'), waitingRooms);
+  } else if (waitingTable) {
+    waitingTable.remove();
   }
 
+  // --- Active games section ---
+  let activeHeading = elements.roomsList.querySelector('.active-games-heading');
+  let activeTable = elements.roomsList.querySelector('.active-games-table');
   if (hasActive) {
-    html += '<h3 class="active-games-heading">Live Games</h3>';
-    html += '<table class="rooms-table active-games-table"><thead><tr>';
-    html += '<th>White</th><th>Black</th><th>Viewers</th><th></th>';
-    html += '</tr></thead><tbody>';
-
-    activeRooms.forEach(room => {
-      html += `<tr class="room-row active-room-row">`;
-      html += `<td>${escapeHtml(room.whiteName || 'Unknown')}</td>`;
-      html += `<td>${escapeHtml(room.blackName || 'Unknown')}</td>`;
-      html += `<td>${room.spectatorCount || 0}</td>`;
-      html += `<td><button class="btn-secondary btn-small room-watch-btn" data-code="${escapeHtml(room.roomCode)}">Watch</button></td>`;
-      html += '</tr>';
-    });
-
-    html += '</tbody></table>';
+    if (!activeHeading) {
+      activeHeading = document.createElement('h3');
+      activeHeading.className = 'active-games-heading';
+      activeHeading.textContent = 'Live Games';
+      elements.roomsList.appendChild(activeHeading);
+    }
+    if (!activeTable) {
+      activeTable = document.createElement('table');
+      activeTable.className = 'rooms-table active-games-table';
+      activeTable.innerHTML = '<thead><tr><th>White</th><th>Black</th><th>Viewers</th><th></th></tr></thead><tbody></tbody>';
+      elements.roomsList.appendChild(activeTable);
+    }
+    _diffActiveRows(activeTable.querySelector('tbody'), activeRooms);
+  } else {
+    if (activeHeading) activeHeading.remove();
+    if (activeTable) activeTable.remove();
   }
 
-  elements.roomsList.innerHTML = html;
+  // Remove empty placeholder if present
+  const emptyMsg = elements.roomsList.querySelector('.rooms-empty');
+  if (emptyMsg) emptyMsg.remove();
+}
 
-  // Bind join buttons
-  elements.roomsList.querySelectorAll('.room-join-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const code = e.target.dataset.code;
-      const name = elements.nameInput?.value.trim();
-      if (!name) return;
-      const btns = [
-        elements.createRoomBtn, elements.joinRoomBtn, elements.playBotBtn,
-        elements.createRoomSubmit, elements.joinCodeSubmit,
-      ];
-      btns.forEach(b => { if (b) b.disabled = true; });
-      if (elements.nameInput) elements.nameInput.disabled = true;
-      state.socket.emit('joinRoom', { name, roomCode: code });
-    });
+function _bindJoinBtn(btn) {
+  btn.addEventListener('click', (e) => {
+    const code = e.target.dataset.code;
+    const name = elements.nameInput?.value.trim();
+    if (!name) return;
+    const btns = [
+      elements.createRoomBtn, elements.joinRoomBtn, elements.playBotBtn,
+      elements.createRoomSubmit, elements.joinCodeSubmit,
+    ];
+    btns.forEach(b => { if (b) b.disabled = true; });
+    if (elements.nameInput) elements.nameInput.disabled = true;
+    state.socket.emit('joinRoom', { name, roomCode: code });
+  });
+}
+
+function _bindWatchBtn(btn) {
+  btn.addEventListener('click', (e) => {
+    const code = e.target.dataset.code;
+    state.socket.emit('spectateRoom', { roomCode: code });
+  });
+}
+
+function _diffWaitingRows(tbody, rooms) {
+  const newCodes = new Set(rooms.map(r => r.roomCode));
+  const existingRows = tbody.querySelectorAll('tr[data-code]');
+  const existingCodes = new Map();
+
+  // Remove rows no longer present
+  existingRows.forEach(row => {
+    const code = row.dataset.code;
+    if (!newCodes.has(code)) {
+      row.remove();
+    } else {
+      existingCodes.set(code, row);
+    }
   });
 
-  // Bind watch buttons
-  elements.roomsList.querySelectorAll('.room-watch-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const code = e.target.dataset.code;
-      state.socket.emit('spectateRoom', { roomCode: code });
-    });
+  // Add/update rows
+  rooms.forEach(room => {
+    const code = room.roomCode;
+    const openColor = room.openColor ? COLOR_NAMES[room.openColor] || room.openColor : 'Any';
+
+    if (existingCodes.has(code)) {
+      // Update existing row cells in case data changed
+      const row = existingCodes.get(code);
+      const cells = row.querySelectorAll('td');
+      cells[1].textContent = room.creatorName || 'Unknown';
+      cells[2].textContent = openColor;
+    } else {
+      // Create new row
+      const row = document.createElement('tr');
+      row.className = 'room-row';
+      row.dataset.code = code;
+      row.innerHTML =
+        `<td class="room-code-cell">${escapeHtml(code)}</td>` +
+        `<td>${escapeHtml(room.creatorName || 'Unknown')}</td>` +
+        `<td>${openColor}</td>` +
+        `<td><button class="btn-primary btn-small room-join-btn" data-code="${escapeHtml(code)}">Join</button></td>`;
+      _bindJoinBtn(row.querySelector('.room-join-btn'));
+      tbody.appendChild(row);
+    }
+  });
+}
+
+function _diffActiveRows(tbody, rooms) {
+  const newCodes = new Set(rooms.map(r => r.roomCode));
+  const existingRows = tbody.querySelectorAll('tr[data-code]');
+  const existingCodes = new Map();
+
+  // Remove rows no longer present
+  existingRows.forEach(row => {
+    const code = row.dataset.code;
+    if (!newCodes.has(code)) {
+      row.remove();
+    } else {
+      existingCodes.set(code, row);
+    }
+  });
+
+  // Add/update rows
+  rooms.forEach(room => {
+    const code = room.roomCode;
+    if (existingCodes.has(code)) {
+      // Update existing row cells
+      const row = existingCodes.get(code);
+      const cells = row.querySelectorAll('td');
+      cells[0].textContent = room.whiteName || 'Unknown';
+      cells[1].textContent = room.blackName || 'Unknown';
+      cells[2].textContent = room.spectatorCount || 0;
+    } else {
+      // Create new row
+      const row = document.createElement('tr');
+      row.className = 'room-row active-room-row';
+      row.dataset.code = code;
+      row.innerHTML =
+        `<td>${escapeHtml(room.whiteName || 'Unknown')}</td>` +
+        `<td>${escapeHtml(room.blackName || 'Unknown')}</td>` +
+        `<td>${room.spectatorCount || 0}</td>` +
+        `<td><button class="btn-secondary btn-small room-watch-btn" data-code="${escapeHtml(code)}">Watch</button></td>`;
+      _bindWatchBtn(row.querySelector('.room-watch-btn'));
+      tbody.appendChild(row);
+    }
   });
 }
 
