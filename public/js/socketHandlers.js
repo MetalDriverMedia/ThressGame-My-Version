@@ -51,6 +51,10 @@ export function onConnect() {
   if (state.isGameActive) return;
   if (state.myToken) {
     state.socket.emit('resumeSession', { token: state.myToken });
+  } else {
+    // Fresh user or returned to landing — join lobby and fetch rooms immediately
+    state.socket.emit('joinLobby');
+    state.socket.emit('listRooms');
   }
 }
 
@@ -316,6 +320,11 @@ export function onResumeRejected(payload) {
   if (state.isGameActive) return;
   clearSession();
   showLanding();
+  // Immediately join lobby and fetch rooms since we're back on landing
+  if (state.socket && state.socket.connected) {
+    state.socket.emit('joinLobby');
+    state.socket.emit('listRooms');
+  }
 }
 
 export function onRoomsList(payload) {
