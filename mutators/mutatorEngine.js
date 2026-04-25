@@ -64,6 +64,7 @@ function shouldTriggerChoice(mutatorState) {
  */
 function randomizeDuration(duration) {
   if (!duration) return null;
+  if (!Array.isArray(duration)) return duration;
   const [baseMin, baseMax] = duration;
   const range = baseMax - baseMin;
   if (range <= 2) return [baseMin, baseMax]; // already tight, don't shrink further
