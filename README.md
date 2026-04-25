@@ -63,6 +63,10 @@ Every 3 moves, the active player is shown 3 randomly-weighted rule cards. They p
 
 Multiple rules stack simultaneously. The system handles conflicts, field restrictions, and deadlock detection automatically.
 
+##Responsible AI Disclosure
+
+Claude Code used to handle deployments/git pushes and generate changelog summaries because I am lazy. 
+
 ## License
 
 [ISC](LICENSE)
