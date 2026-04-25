@@ -631,7 +631,8 @@ export function getLegalMovesForSquare(square) {
     }
 
     if (isRuleActiveClient('christmas_truce')) {
-      targets = targets.filter(to => !pieces.has(to));
+      const nonCaptures = targets.filter(to => !pieces.has(to));
+      if (nonCaptures.length > 0) targets = nonCaptures;
     }
 
     if (isRuleActiveClient('hobbit_slaughter')) {
