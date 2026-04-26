@@ -202,11 +202,16 @@ function buildCardElement({ id, name, description, status, isChooser, badgeText,
 }
 
 function createCardElement(rule, isChooser) {
-  const durationText = rule.duration
-    ? (rule.duration[0] === rule.duration[1]
+  let durationText;
+  if (!rule.duration) {
+    durationText = 'Instant';
+  } else if (Array.isArray(rule.duration)) {
+    durationText = rule.duration[0] === rule.duration[1]
       ? `${rule.duration[0]} moves`
-      : `${rule.duration[0]}-${rule.duration[1]} moves`)
-    : 'Instant';
+      : `${rule.duration[0]}-${rule.duration[1]} moves`;
+  } else {
+    durationText = `${rule.duration} move${rule.duration !== 1 ? 's' : ''}`;
+  }
 
   return buildCardElement({
     id: rule.id,

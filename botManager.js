@@ -148,6 +148,32 @@ function getMutatorFilteredMoves(room, playerColor) {
     return ruleHooks.getLegalMoveModifiers;
   });
 
+  // Include custom moves before filtering so distance filters can evaluate them
+  const custom = getCustomMoves(room, playerColor);
+  for (const cm of custom) {
+    if (!legalMoves.some(m => m.from === cm.from && m.to === cm.to)) {
+      legalMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
+    }
+  }
+
+  // Include wrap moves from Pacman Style
+  if (isRuleActive(room.mutatorState, 'pacman_style')) {
+    const wraps = getWrapMoves(room, playerColor);
+    for (const wm of wraps) {
+      if (!legalMoves.some(m => m.from === wm.from && m.to === wm.to)) {
+        legalMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
+      }
+    }
+  }
+
+  // Sort so forced-move rules (tornado, bloodthirsty) run last and override distance filters
+  const FORCED_MOVE_RULES = new Set(['tornado', 'bloodthirsty']);
+  restrictionRules.sort((a, b) => {
+    const aForced = FORCED_MOVE_RULES.has(a.rule.id) ? 1 : 0;
+    const bForced = FORCED_MOVE_RULES.has(b.rule.id) ? 1 : 0;
+    return aForced - bForced;
+  });
+
   for (const ar of restrictionRules) {
     const ruleHooks = getHooks(ar.rule.id);
     const filterFn = ruleHooks.getLegalMoveModifiers(room, playerColor);
@@ -155,25 +181,6 @@ function getMutatorFilteredMoves(room, playerColor) {
       const filtered = filterFn(legalMoves);
       if (filtered.length > 0) {
         legalMoves = filtered;
-      }
-    }
-  }
-
-  // Add custom moves from movement-add mutators (estrogen, god_kings, etc.)
-  const custom = getCustomMoves(room, playerColor);
-  for (const cm of custom) {
-    // Convert to verbose-move-like object so bot can select it
-    if (!legalMoves.some(m => m.from === cm.from && m.to === cm.to)) {
-      legalMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
-    }
-  }
-
-  // Add wrap moves from Pacman Style
-  if (isRuleActive(room.mutatorState, 'pacman_style')) {
-    const wraps = getWrapMoves(room, playerColor);
-    for (const wm of wraps) {
-      if (!legalMoves.some(m => m.from === wm.from && m.to === wm.to)) {
-        legalMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
       }
     }
   }

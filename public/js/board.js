@@ -755,7 +755,9 @@ export function getLegalMovesForSquare(square) {
       const allMoves = state.chessInstance.moves({ verbose: true });
       const anyCanReachTornado = allMoves.some(m => m.to === tSq);
       if (anyCanReachTornado) {
-        if (targets.includes(tSq)) {
+        // This piece can reach tornado — force it, even if distance filters removed it
+        const thisPieceCanReach = allMoves.some(m => m.from === square && m.to === tSq);
+        if (thisPieceCanReach) {
           targets = [tSq];
         } else {
           targets = [];

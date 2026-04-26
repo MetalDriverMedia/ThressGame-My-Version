@@ -133,7 +133,33 @@ async function handleMove(io, socket, gameManager, data) {
     if (restrictionRules.length > 0) {
       let legalMoves = room.chess.moves({ verbose: true });
 
-      for (const ar of restrictionRules) {
+      // Include custom moves (short_stop knights, estrogen, god_kings, etc.)
+      const customMoves = getCustomMoves(room, player.color);
+      for (const cm of customMoves) {
+        if (!legalMoves.some(m => m.from === cm.from && m.to === cm.to)) {
+          legalMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
+        }
+      }
+
+      // Include wrap moves (Pacman Style)
+      if (isRuleActive(ms, 'pacman_style')) {
+        const wrapMoves = getWrapMoves(room, player.color);
+        for (const wm of wrapMoves) {
+          if (!legalMoves.some(m => m.from === wm.from && m.to === wm.to)) {
+            legalMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
+          }
+        }
+      }
+
+      // Sort so forced-move rules (tornado, bloodthirsty) run last and override distance filters
+      const FORCED_MOVE_RULES = new Set(['tornado', 'bloodthirsty']);
+      const sorted = [...restrictionRules].sort((a, b) => {
+        const aForced = FORCED_MOVE_RULES.has(a.rule.id) ? 1 : 0;
+        const bForced = FORCED_MOVE_RULES.has(b.rule.id) ? 1 : 0;
+        return aForced - bForced;
+      });
+
+      for (const ar of sorted) {
         const ruleHooks = getHooks(ar.rule.id);
         const filterFn = ruleHooks.getLegalMoveModifiers(room, player.color);
         if (filterFn) {

@@ -161,6 +161,14 @@ function getEffectiveLegalMoves(room) {
       return ruleHooks && ruleHooks.getLegalMoveModifiers;
     });
 
+    // Sort so forced-move rules (tornado, bloodthirsty) run last and override distance filters
+    const FORCED_MOVE_RULES = new Set(['tornado', 'bloodthirsty']);
+    restrictionRules.sort((a, b) => {
+      const aForced = FORCED_MOVE_RULES.has(a.rule.id) ? 1 : 0;
+      const bForced = FORCED_MOVE_RULES.has(b.rule.id) ? 1 : 0;
+      return aForced - bForced;
+    });
+
     for (const ar of restrictionRules) {
       const ruleHooks = getHooks(ar.rule.id);
       const filterFn = ruleHooks.getLegalMoveModifiers(room, currentTurn);

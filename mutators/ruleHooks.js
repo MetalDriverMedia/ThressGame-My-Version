@@ -582,7 +582,8 @@ const hooks = {
           }
           return true;
         });
-        return filtered.length > 0 ? filtered : moves;
+        // Hard blocks: never fall back to unfiltered moves
+        return filtered;
       };
     },
   },
@@ -1065,9 +1066,13 @@ const hooks = {
       const ms = room.mutatorState;
       const tornado = ms.boardModifiers.tornadoSquare;
       if (!tornado || (tornado.expiresAtMove && ms.moveCount >= tornado.expiresAtMove)) return null;
-      // If any piece CAN move to the tornado square, it MUST
+      // If any piece CAN move to the tornado square (using unfiltered moves), it MUST
+      const allMoves = room.chess.moves({ verbose: true });
+      const anyCanReach = allMoves.some(m => m.to === tornado.square);
+      if (!anyCanReach) return null;
       return (moves) => {
-        const toTornado = moves.filter(m => m.to === tornado.square);
+        // Re-check from unfiltered moves since distance filters may have removed tornado square
+        const toTornado = allMoves.filter(m => m.to === tornado.square);
         return toTornado.length > 0 ? toTornado : moves;
       };
     },
