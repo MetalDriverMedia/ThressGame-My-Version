@@ -2,7 +2,7 @@
 // MAIN -- Entry point & socket wiring
 // ============================================================================
 
-import { state, elements, STORAGE_KEYS, socketPath } from './state.js';
+import { state, elements, STORAGE_KEYS, socketPath, randomChessName } from './state.js';
 import { startPageBackground } from './animated-bg.js';
 import { loadFromStorage } from './storage.js';
 import {
@@ -93,7 +93,7 @@ function connectSocket() {
   // Restore saved name or use default
   const savedName = loadFromStorage(STORAGE_KEYS.name);
   if (elements.nameInput) {
-    elements.nameInput.value = savedName || 'IAmBadAtChess';
+    elements.nameInput.value = savedName || randomChessName();
   }
 
   // Page background disabled - using static matte

@@ -184,3 +184,29 @@ export function escapeHtml(text) {
   div.appendChild(document.createTextNode(text));
   return div.innerHTML;
 }
+
+const _namePool = {
+  adj: [
+    'Sneaky', 'Blundering', 'Brave', 'Doomed', 'Greedy', 'Cursed',
+    'Chaotic', 'Sleepy', 'Feral', 'Cowardly', 'Mighty', 'Tiny',
+    'Grumpy', 'Reckless', 'Panicked', 'Lazy', 'Angry', 'Lost',
+    'Haunted', 'Confused', 'Foolish', 'Dramatic', 'Nervous', 'Smug',
+    'Unhinged', 'Tragic', 'Hungry', 'Screaming', 'Retired', 'Feral',
+  ],
+  noun: [
+    'Pawn', 'Knight', 'Bishop', 'Rook', 'King', 'Queen',
+    'Gambit', 'Blunder', 'Fork', 'Pin', 'Checkmate', 'Stalemate',
+    'Castler', 'Sacrifice', 'Fianchetto', 'Zugzwang', 'Patzer',
+    'EnPassant', 'Tempo', 'Promotion', 'Skewer', 'Endgame',
+  ],
+  suffix: [
+    '', '', '', '', '', '', // weighted toward no suffix
+    '42', '99', '007', 'Jr', 'III', 'PhD', 'Esq',
+    'XD', '69', 'TTV', 'IRL', 'lol',
+  ],
+};
+
+export function randomChessName() {
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  return pick(_namePool.adj) + pick(_namePool.noun) + pick(_namePool.suffix);
+}
