@@ -53,6 +53,68 @@ export function showLanding() {
   showPanel('landing');
   fetchScoreboard();
   fetchMotd();
+  stopTurnClock();
+}
+
+// --- Turn Clock ---
+
+function formatClock(ms) {
+  if (ms <= 0) return '0:00';
+  const total = Math.ceil(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+export function startTurnClock(turnStartTime, durationMs) {
+  state.turnStartTime = turnStartTime;
+  state.turnDurationMs = durationMs || 180000;
+  const timerEl = document.getElementById('turn-timer');
+  if (timerEl) timerEl.classList.remove('hidden');
+  _tickTurnClock();
+}
+
+export function stopTurnClock() {
+  state.turnStartTime = null;
+  if (state.turnTimerRaf) {
+    cancelAnimationFrame(state.turnTimerRaf);
+    state.turnTimerRaf = null;
+  }
+  const timerEl = document.getElementById('turn-timer');
+  if (timerEl) {
+    timerEl.classList.add('hidden');
+    timerEl.classList.remove('warning', 'critical');
+  }
+}
+
+function _tickTurnClock() {
+  if (!state.turnStartTime) return;
+  const valueEl = document.getElementById('turn-timer-value');
+  const timerEl = document.getElementById('turn-timer');
+  if (!valueEl || !timerEl) return;
+
+  const elapsed = Date.now() - state.turnStartTime;
+  const remaining = Math.max(0, state.turnDurationMs - elapsed);
+  valueEl.textContent = formatClock(remaining);
+
+  // Visual states
+  const wasCritical = timerEl.classList.contains('critical');
+  const isCritical = remaining <= 30000;
+  timerEl.classList.toggle('critical', isCritical);
+  timerEl.classList.toggle('warning', remaining > 30000 && remaining <= 60000);
+
+  // Fire a one-shot warning to the active player when crossing into critical
+  if (!wasCritical && isCritical && state.currentTurn === state.myColor && !state.isSpectator) {
+    flashStatus('30 seconds left -- make your move or you forfeit!', 5000);
+  }
+
+  state.turnTimerRaf = requestAnimationFrame(_tickTurnClock);
+}
+
+export function setQuietResignAvailable(available) {
+  state.quietResignAvailable = !!available;
+  const btn = document.getElementById('quiet-resign-btn');
+  if (btn) btn.classList.toggle('hidden', !available);
 }
 
 export function showWaiting(code) {
@@ -492,6 +554,10 @@ export function formatGameEndMessage(payload) {
   const winner = payload?.winner;
   const reason = payload?.reason;
 
+  if (reason === 'quiet-resign') {
+    return 'Game ended -- opponent was stalling. No score change.';
+  }
+
   let resultText;
   if (winner === state.myColor) {
     resultText = 'You Win!';
@@ -504,6 +570,7 @@ export function formatGameEndMessage(payload) {
   const reasons = {
     'checkmate': 'by checkmate',
     'resignation': 'by resignation',
+    'timeout': 'by timeout',
     'disconnect': 'by forfeit (disconnect)',
     'king-destroyed': '-- King destroyed!',
     'stalemate': '-- stalemate',

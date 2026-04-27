@@ -82,6 +82,12 @@ export const state = {
 
   pendingPromotion: null,
 
+  // Turn clock
+  turnStartTime: null,
+  turnDurationMs: 180000,
+  turnTimerRaf: null,
+  quietResignAvailable: false,
+
   // Mutator
   mutatorState: null,
   allRules: [],

@@ -10,6 +10,7 @@ const { serializeBoardForClient, getPublicPlayer } = require('../gameController'
 const { isKingInCheck } = require('../mutators/checkDetector');
 const { COLUMNS, ROWS, fenToBoard, isSquareHardBlocked } = require('../mutators/boardUtils');
 const { checkKingDestroyed, checkMutatorDeadlock, checkParryDeadlock, triggerCoinFlip, checkCoinFlipSkipTurn } = require('../utils/gameLifecycle');
+const turnClock = require('../utils/turnClock');
 
 /**
  * Create mutator handler functions with injected dependencies.
@@ -76,8 +77,9 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         black: getPublicPlayer(room.black),
       });
 
-      // Schedule bot move if opponent is bot
+      // Restart clock for the new player's turn
       if (room.status === 'active') {
+        turnClock.startClock(room, io);
         scheduleBotMove(room, io, gameManager, handleMove, botAutoMutatorResponse);
       }
     }

@@ -7,11 +7,13 @@ const { GameManager } = require('./gameManager');
 const { serializeBoardForClient, getPublicPlayer } = require('./gameController');
 const { handleCreateRoom, handleJoinRoom, handleJoinBot, handleListRooms } = require('./handlers/joinHandler');
 const { handleMove } = require('./handlers/moveHandler');
-const { handleDisconnect, handleResign, handleResume } = require('./handlers/playerHandlers');
+const { handleDisconnect, handleResign, handleQuietResign, handleResume } = require('./handlers/playerHandlers');
 const { handleSpectateRoom, handleDisableSpectating, handleSpectatorDisconnect } = require('./handlers/spectatorHandler');
 const { createMutatorHandlers } = require('./handlers/mutatorHandler');
 const { addBotToRoom, scheduleBotMove, generateBotTarget } = require('./botManager');
 const { formatBasePath, buildSocketPath, registerConfigRoute } = require('./utils/config');
+const turnClock = require('./utils/turnClock');
+const { autoResignOnTimeout } = require('./utils/gameLifecycle');
 
 // Routes
 const { setupApiRoutes } = require('./routes/apiRoutes');
@@ -62,6 +64,11 @@ const io = new Server(httpServer, {
 
 const gameManager = new GameManager();
 
+// When a turn timer expires, auto-resign the staller
+turnClock.setTimeoutResignHandler((room, io, stallingColor) => {
+  autoResignOnTimeout(room, io, gameManager, stallingColor);
+});
+
 // Static files
 // URL rewriting middleware above strips BASE_PATH, so serve at '/'
 const STATIC_DIR = path.join(__dirname, 'public');
@@ -78,6 +85,8 @@ function startGame(room) {
     white: getPublicPlayer(room.white),
     black: getPublicPlayer(room.black),
   });
+  // Start turn clock for the first player (skipped for bot games)
+  turnClock.startClock(room, io);
   // If bot goes first (white), schedule its move
   scheduleBotMove(room, io, gameManager, handleMove, botAutoMutatorResponse);
 }
@@ -153,6 +162,7 @@ io.on('connection', (socket) => {
     }
   });
   socket.on('resign', () => handleResign(io, socket, gameManager, broadcastRoomUpdate));
+  socket.on('quietResign', () => handleQuietResign(io, socket, gameManager, broadcastRoomUpdate));
 
   // Mutator events (selectMutator, mutatorActionResponse, rpsChoice, coinFlipChoice, coinFlipStart)
   registerMutatorHandlers(socket, io, gameManager);

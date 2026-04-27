@@ -6,6 +6,7 @@ const { isRuleActive } = require('../mutators/mutatorEngine');
 const { isKingInCheck } = require('../mutators/checkDetector');
 const { fenToBoard } = require('../mutators/boardUtils');
 const { recordWin, recordLoss, recordDraw, getTop } = require('./scoreboard');
+const turnClock = require('./turnClock');
 
 const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -30,6 +31,10 @@ function scheduleRoomDeletion(gameManager, roomCode, delayMs = ROOM_CLEANUP_DELA
  * @param {string|null} winner - Winner color ('w'/'b') or null for draws
  */
 function emitGameEnded(io, room, reason, winner) {
+  // Stop turn clock and clear any standing quiet-resign offer
+  turnClock.clearClock(room);
+  turnClock.clearQuietResign(room);
+
   const payload = {
     reason,
     winner,
@@ -42,7 +47,8 @@ function emitGameEnded(io, room, reason, winner) {
   }
   io.to(room.roomCode).emit('gameEnded', payload);
 
-  // Update scoreboard (skip bot games)
+  // Update scoreboard (skip bot games and quiet resigns)
+  if (reason === 'quiet-resign') return;
   const w = room.white;
   const b = room.black;
   if (!w || !b || w.isBot || b.isBot) return;
@@ -59,6 +65,16 @@ function emitGameEnded(io, room, reason, winner) {
 
   // Push updated scoreboard to everyone in the lobby
   io.to('lobby').emit('scoreboardUpdate', { players: getTop(25) });
+}
+
+// Auto-resign a player whose turn timer ran out. Counts as a normal resignation
+// for scoreboard purposes -- the staller loses, the opponent wins.
+function autoResignOnTimeout(room, io, gameManager, stallingColor) {
+  if (!room || room.status !== 'active') return;
+  const winnerColor = stallingColor === 'w' ? 'b' : 'w';
+  room.endGame('timeout', winnerColor);
+  emitGameEnded(io, room, 'timeout', winnerColor);
+  scheduleRoomDeletion(gameManager, room.roomCode);
 }
 
 /**
@@ -160,6 +176,9 @@ function checkCoinFlipSkipTurn(room, io, forColor) {
     white: getPublicPlayer(room.white),
     black: getPublicPlayer(room.black),
   });
+
+  // Restart clock for the new player whose turn just started via skip
+  turnClock.startClock(room, io);
 
   // Trigger next coin flip for the other player
   const nextColor = forColor === 'w' ? 'b' : 'w';
@@ -316,4 +335,4 @@ function checkParryDeadlock(room, io, gameManager) {
   }
 }
 
-module.exports = { scheduleRoomDeletion, emitGameEnded, checkKingDestroyed, checkMutatorDeadlock, checkParryDeadlock, triggerCoinFlip, checkCoinFlipSkipTurn, getEffectiveLegalMoves, ROOM_CLEANUP_DELAY_MS };
+module.exports = { scheduleRoomDeletion, emitGameEnded, checkKingDestroyed, checkMutatorDeadlock, checkParryDeadlock, triggerCoinFlip, checkCoinFlipSkipTurn, getEffectiveLegalMoves, autoResignOnTimeout, ROOM_CLEANUP_DELAY_MS };

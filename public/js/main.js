@@ -24,6 +24,7 @@ import {
   onCoinFlip, onCoinFlipStartAnimation, onCoinFlipPrompt, onCoinFlipResult,
   onRiskItRookFlipPrompt, onRiskItRookFlipResult,
   onSpectateSuccess, onSpectateKicked, onSpectateError, onSpectatorCount,
+  onTurnClockUpdate, onQuietResignAvailable, onQuietResignRevoked,
 } from './socketHandlers.js';
 
 // --- Wire cross-module renderers ----------------------------------
@@ -69,6 +70,11 @@ function connectSocket() {
   state.socket.on('spectatorCount', onSpectatorCount);
 
   state.socket.on('resignError', (msg) => flashStatus(msg || 'Resign failed.', 3000));
+
+  // Turn clock + quiet resign
+  state.socket.on('turnClockUpdate', onTurnClockUpdate);
+  state.socket.on('quietResignAvailable', onQuietResignAvailable);
+  state.socket.on('quietResignRevoked', onQuietResignRevoked);
 
   // Mutator events
   state.socket.on('mutatorChoice', onMutatorChoice);

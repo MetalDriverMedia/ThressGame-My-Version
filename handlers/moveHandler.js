@@ -10,6 +10,7 @@ const {
 const { executeHook, getHooks, getWrapMoves, getCustomMoves, getBoardFromRoom, syncChessFromBoard, triggerSoftRestrictions, destroyPiece } = require('../mutators/ruleHooks');
 const { isKingInCheck } = require('../mutators/checkDetector');
 const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } = require('../mutators/boardUtils');
+const turnClock = require('../utils/turnClock');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -174,6 +175,10 @@ async function handleMove(io, socket, gameManager, data) {
       }
     }
   }
+
+  // Charge a strike based on submit time (before any RPS / mutator early-returns).
+  // No-op on RPS re-entry since turnStartTime is already cleared by then.
+  turnClock.consumeMoveAttempt(room, io, player.color);
 
   // --- Parry RPS Check ----------------------------------------
   if (room.mutatorState && isRuleActive(room.mutatorState, 'parry')) {
@@ -369,7 +374,13 @@ async function handleMove(io, socket, gameManager, data) {
 
   // Check end-of-game conditions
   const gameEnded = await checkGameEnd(room, io, gameManager, player);
-  if (gameEnded) return;
+  if (gameEnded) {
+    turnClock.clearClock(room);
+    return;
+  }
+
+  // Start clock for the next player's turn (no-op for bot games)
+  turnClock.startClock(room, io);
 
   // --- Mutator Post-Move Logic ----------------------------------
   if (room.mutatorState) {

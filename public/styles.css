@@ -2297,6 +2297,73 @@ button:not(:disabled):active {
   pointer-events: none;
 }
 
+.turn-timer {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(129, 182, 76, 0.12);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.turn-timer.hidden {
+  display: none;
+}
+
+.turn-timer-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+
+.turn-timer-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.turn-timer.warning .turn-timer-value {
+  color: #ffb547;
+}
+
+.turn-timer.critical {
+  border-color: rgba(220, 80, 80, 0.4);
+}
+
+.turn-timer.critical .turn-timer-value {
+  color: #ff6b6b;
+}
+
+.quiet-resign-btn {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(220, 80, 80, 0.12);
+  color: #ff8a8a;
+  border: 1px solid rgba(220, 80, 80, 0.4);
+  border-radius: 8px;
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.quiet-resign-btn:hover {
+  background: rgba(220, 80, 80, 0.22);
+}
+
+.quiet-resign-btn.hidden {
+  display: none;
+}
+
 /* === INFO BAR (Variant A) === */
 .info-bar {
   display: flex;

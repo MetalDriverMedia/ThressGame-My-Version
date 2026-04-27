@@ -1,5 +1,6 @@
 const { serializeBoardForClient, getPublicPlayer } = require('../gameController');
 const { serializeMutatorState } = require('../mutators/mutatorEngine');
+const turnClock = require('../utils/turnClock');
 
 /**
  * Handle a socket requesting to spectate a room.
@@ -42,6 +43,8 @@ function handleSpectateRoom(io, socket, gameManager, data) {
     capturedPieces: room.getCapturedPieces(),
     mutatorState: room.mutatorState ? serializeMutatorState(room.mutatorState) : null,
     spectatorCount: room.spectators.size,
+    turnStartTime: turnClock.shouldRunClock(room) ? (room.turnStartTime || null) : null,
+    turnDurationMs: turnClock.TURN_DURATION_MS,
   });
 
   // Broadcast updated spectator count to everyone in the room

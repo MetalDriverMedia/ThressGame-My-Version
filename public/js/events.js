@@ -330,6 +330,16 @@ export function bindGameEvents() {
     });
   }
 
+  const quietResignBtn = document.getElementById('quiet-resign-btn');
+  if (quietResignBtn) {
+    quietResignBtn.addEventListener('click', () => {
+      if (state.isSpectator || !state.isGameActive) return;
+      if (confirm('Resign without penalty? Your opponent has been stalling, so neither of you will be scored.')) {
+        state.socket.emit('quietResign');
+      }
+    });
+  }
+
   if (elements.disableSpectatingBtn) {
     elements.disableSpectatingBtn.addEventListener('click', () => {
       if (confirm('Disable spectating? This cannot be undone.')) {

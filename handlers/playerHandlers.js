@@ -1,6 +1,7 @@
 const { serializeBoardForClient, getPublicPlayer } = require('../gameController');
 const { scheduleRoomDeletion, emitGameEnded } = require('../utils/gameLifecycle');
 const { serializeMutatorState } = require('../mutators/mutatorEngine');
+const turnClock = require('../utils/turnClock');
 
 const WAITING_DISCONNECT_TIMEOUT_MS = 30 * 1000; // 30 seconds
 const ACTIVE_DISCONNECT_TIMEOUT_MS = 60 * 1000; // 60 seconds
@@ -117,6 +118,44 @@ function handleResign(io, socket, gameManager, broadcastRoomUpdate) {
 }
 
 /**
+ * Quiet resign -- offered to a player whose opponent has been stalling.
+ * No scoreboard penalty for either player.
+ */
+function handleQuietResign(io, socket, gameManager, broadcastRoomUpdate) {
+  const room = gameManager.getRoomForSocket(socket.id);
+  if (!room) {
+    socket.emit('resignError', 'You are not in a room.');
+    return;
+  }
+  const player = room.getPlayerBySocket(socket.id);
+  if (!player) {
+    socket.emit('resignError', 'Player not found.');
+    return;
+  }
+  if (room.status !== 'active') {
+    socket.emit('resignError', 'You can only resign during an active game.');
+    return;
+  }
+  if (room.quietResignFor !== player.color) {
+    socket.emit('resignError', 'Quiet resign not available right now.');
+    return;
+  }
+  // Defense in depth: verify the opponent actually has the required strike count.
+  // room.quietResignFor is server-authoritative, but cross-check the underlying state
+  // to catch any logic bug or stale flag.
+  const opponentColor = player.color === 'w' ? 'b' : 'w';
+  const opponentStrikes = (room.lowTimeStrikes && room.lowTimeStrikes[opponentColor]) || 0;
+  if (opponentStrikes < 3) {
+    socket.emit('resignError', 'Quiet resign not available right now.');
+    return;
+  }
+  room.endGame('quiet-resign', null);
+  emitGameEnded(io, room, 'quiet-resign', null);
+  scheduleRoomDeletion(gameManager, room.roomCode);
+  broadcastRoomUpdate();
+}
+
+/**
  * Handle player reconnection/resume.
  *
  * @param {Object} io - Socket.IO server
@@ -188,6 +227,9 @@ function handleResume(io, socket, gameManager, data) {
     moveHistory: room.moveHistory,
     capturedPieces: room.getCapturedPieces(),
     mutatorState: room.mutatorState ? serializeMutatorState(room.mutatorState) : null,
+    turnStartTime: turnClock.shouldRunClock(room) ? (room.turnStartTime || null) : null,
+    turnDurationMs: turnClock.TURN_DURATION_MS,
+    quietResignFor: room.quietResignFor || null,
   });
 
   // Notify opponent
@@ -208,5 +250,6 @@ function handleResume(io, socket, gameManager, data) {
 module.exports = {
   handleDisconnect,
   handleResign,
+  handleQuietResign,
   handleResume,
 };

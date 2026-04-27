@@ -11,6 +11,7 @@ import {
   renderCapturedPieces,
   setBaseStatus, flashStatus, formatGameEndMessage, showGameOverModal,
   renderRoomsList,
+  startTurnClock, stopTurnClock, setQuietResignAvailable,
 } from './ui.js';
 import {
   renderBoard, animateMoveWithRender, waitForAnimation, skipCurrentAnimations,
@@ -192,10 +193,33 @@ export function onMoveRejected(payload) {
   flashStatus(message, 3000);
 }
 
+export function onTurnClockUpdate(payload) {
+  if (!payload || !payload.turnStartTime) return;
+  startTurnClock(payload.turnStartTime, payload.durationMs);
+  // Don't hide quiet-resign here -- the server controls its lifecycle via
+  // explicit quietResignAvailable / quietResignRevoked events.
+}
+
+export function onQuietResignAvailable(payload) {
+  if (state.isSpectator) return;
+  if (payload.forColor === state.myColor) {
+    setQuietResignAvailable(true);
+  }
+}
+
+export function onQuietResignRevoked(payload) {
+  if (state.isSpectator) return;
+  if (payload.forColor === state.myColor) {
+    setQuietResignAvailable(false);
+  }
+}
+
 export function onGameEnded(payload) {
   console.log('[socket] gameEnded', payload.reason);
   state.isGameActive = false;
   state.isSpectator = false;
+  stopTurnClock();
+  setQuietResignAvailable(false);
   skipCurrentAnimations();
 
   if (payload.board) {
@@ -298,6 +322,18 @@ export function onResumeSuccess(payload) {
       } else if (ms.pendingCoinFlip && ms.pendingCoinFlip.forPlayer === state.myColor) {
         onCoinFlipPrompt(ms.pendingCoinFlip);
       }
+    }
+
+    // Restore turn clock and quiet resign state
+    if (payload.turnStartTime) {
+      startTurnClock(payload.turnStartTime, payload.turnDurationMs);
+    } else {
+      stopTurnClock();
+    }
+    if (payload.quietResignFor && payload.quietResignFor === state.myColor) {
+      setQuietResignAvailable(true);
+    } else {
+      setQuietResignAvailable(false);
     }
 
     // Only show "Reconnected" if the disconnect was noticeable (>2s)
@@ -520,6 +556,11 @@ export function onSpectateSuccess(payload) {
     requestAnimationFrame(() => {
       titleCard.style.transition = '';
     });
+  }
+
+  // Sync turn clock if the game is using it
+  if (payload.turnStartTime) {
+    startTurnClock(payload.turnStartTime, payload.turnDurationMs);
   }
 
   // Restore mutator panel state
