@@ -141,8 +141,56 @@ h2 {
   width: 360px;
 }
 
+.motd-panel {
+  position: absolute;
+  right: calc(100% + 24px);
+  top: 0;
+  width: 280px;
+}
+
+.motd-section {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(129, 182, 76, 0.08);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.motd-section h2 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin: 0 0 12px 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.motd-content {
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 480px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-dim) transparent;
+}
+
+.motd-content::-webkit-scrollbar {
+  width: 6px;
+}
+.motd-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.motd-content::-webkit-scrollbar-thumb {
+  background: var(--text-dim);
+  border-radius: 3px;
+}
+
 @media (max-width: 1100px) {
-  .scoreboard-panel {
+  .scoreboard-panel,
+  .motd-panel {
     position: static;
     width: 100%;
     max-width: 700px;

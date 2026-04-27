@@ -31,10 +31,14 @@ export function showPanel(panelId) {
     }
   });
 
-  // Scoreboard is only visible on the landing page
+  // Side panels are only visible on the landing page
   const scoreboardPanel = document.getElementById('scoreboard-panel');
   if (scoreboardPanel) {
     scoreboardPanel.classList.toggle('hidden', panelId !== 'landing');
+  }
+  const motdPanel = document.getElementById('motd-panel');
+  if (motdPanel && panelId !== 'landing') {
+    motdPanel.classList.add('hidden');
   }
 
   if (panelId === 'landing') {
@@ -48,6 +52,7 @@ export function showLanding() {
   resetGameState();
   showPanel('landing');
   fetchScoreboard();
+  fetchMotd();
 }
 
 export function showWaiting(code) {
@@ -563,6 +568,27 @@ export function onScoreboardUpdate(payload) {
   const container = document.getElementById('scoreboard-list');
   if (!container) return;
   _diffScoreboard(container, payload.players || []);
+}
+
+export async function fetchMotd() {
+  const panel = document.getElementById('motd-panel');
+  const content = document.getElementById('motd-content');
+  if (!panel || !content) return;
+
+  try {
+    const res = await fetch('/api/motd');
+    const data = await res.json();
+    const text = (data.text || '').trim();
+    if (text) {
+      content.textContent = text;
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  } catch (err) {
+    console.warn('[ui] Failed to load MOTD:', err);
+    panel.classList.add('hidden');
+  }
 }
 
 export async function fetchScoreboard() {

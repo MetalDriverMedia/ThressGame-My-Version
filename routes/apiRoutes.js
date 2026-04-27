@@ -1,6 +1,7 @@
 const express = require('express');
 const { RULES, RULE_CATEGORIES } = require('../mutators/mutatorDefs');
 const { getTop } = require('../utils/scoreboard');
+const { readMotd } = require('../utils/motd');
 
 const router = express.Router();
 
@@ -25,6 +26,10 @@ function setupApiRoutes() {
 
   router.get('/scoreboard', (_req, res) => {
     res.json({ players: getTop(25) });
+  });
+
+  router.get('/motd', (_req, res) => {
+    res.json({ text: readMotd() });
   });
 
   return router;
