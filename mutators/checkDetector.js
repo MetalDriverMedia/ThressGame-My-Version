@@ -206,7 +206,51 @@ function applyPostModifiers(attacks, square, board, activeIds) {
 }
 
 /**
+ * Returns true if any active mutator fully prevents this piece from moving.
+ * Such a piece can't deliver check because it can't move to capture.
+ */
+function canPieceMove(square, piece, mutatorState) {
+  if (!mutatorState || !mutatorState.activeRules || mutatorState.activeRules.length === 0) return true;
+  const activeRules = mutatorState.activeRules;
+  const activeIds = new Set(activeRules.map(ar => ar.rule.id));
+
+  // Hobbit Battle: only pawns can move
+  if (activeIds.has('hobbit_battle') && piece.type !== 'p') return false;
+
+  // Severe Constipation: bishops and knights can't move
+  if (activeIds.has('severe_constipation') && (piece.type === 'b' || piece.type === 'n')) return false;
+
+  // All on Red (tails): only the king can move
+  if (activeIds.has('all_on_red')) {
+    const flip = mutatorState.coinFlipResult;
+    if (flip && flip.result === 'tails' && piece.type !== 'k') return false;
+  }
+
+  // Ice Age: pieces in files A and H can't move
+  if (activeIds.has('ice_age') && (square[0] === 'a' || square[0] === 'h')) return false;
+
+  // Mr. Freeze: pieces in frozen columns can't move
+  const ms = mutatorState;
+  if (ms.boardModifiers?.frozenColumns?.length) {
+    const frozen = ms.boardModifiers.frozenColumns.filter(
+      fc => !fc.expiresAtMove || ms.moveCount < fc.expiresAtMove
+    );
+    if (frozen.some(fc => fc.column === square[0])) return false;
+  }
+
+  // Mitosis: the chosen square can't move while the rule is active
+  for (const ar of activeRules) {
+    if (ar.rule.id === 'mitosis' && ar.choiceData === square) return false;
+  }
+
+  // Proletariat is NOT a full immobilization -- non-pawn pieces still move (as pawns)
+  return true;
+}
+
+/**
  * Check if a king of the given color is in check.
+ * Honors mutator-aware attack patterns AND ignores attackers that are
+ * fully immobilized by an active rule (their threat can't be delivered).
  *
  * @param {Map} board - Board state
  * @param {string} kingColor - 'w' or 'b'
@@ -228,11 +272,48 @@ function isKingInCheck(board, kingColor, mutatorState) {
   const enemyColor = kingColor === 'w' ? 'b' : 'w';
   for (const [sq, piece] of board) {
     if (piece.color !== enemyColor) continue;
+    if (!canPieceMove(sq, piece, mutatorState)) continue;
     const attacks = getAttackSquares(sq, piece, board, mutatorState);
     if (attacks.includes(kingSquare)) return true;
   }
 
   return false;
+}
+
+/**
+ * Get all destinations a piece can move to, ignoring whose turn it is and
+ * whether the move resolves a check. Used to validate moves when chess.js's
+ * check filter disagrees with mutator-aware check detection.
+ *
+ * @returns {string[]} valid destination squares
+ */
+function getPseudoLegalDestinations(square, piece, board, mutatorState) {
+  const dests = [];
+  const attacks = getAttackSquares(square, piece, board, mutatorState);
+
+  for (const to of attacks) {
+    const target = board.get(to);
+    if (target && target.color === piece.color) continue; // can't capture own
+    // Pawns only reach attack squares if capturing an enemy piece
+    if (piece.type === 'p' && !target) continue;
+    dests.push(to);
+  }
+
+  // Pawn forward pushes (non-capturing)
+  if (piece.type === 'p') {
+    const dir = piece.color === 'w' ? 1 : -1;
+    const forward1 = offsetSquare(square, 0, dir);
+    if (forward1 && !board.has(forward1)) {
+      dests.push(forward1);
+      const startRank = piece.color === 'w' ? '2' : '7';
+      if (square[1] === startRank) {
+        const forward2 = offsetSquare(square, 0, dir * 2);
+        if (forward2 && !board.has(forward2)) dests.push(forward2);
+      }
+    }
+  }
+
+  return dests;
 }
 
 /**
@@ -263,6 +344,8 @@ module.exports = {
   applyPostModifiers,
   isKingInCheck,
   wouldLeaveKingInCheck,
+  canPieceMove,
+  getPseudoLegalDestinations,
   // Export helpers for rule implementations to override
   getPawnAttacks,
   getKnightAttacks,

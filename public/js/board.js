@@ -650,6 +650,17 @@ export function getLegalMovesForSquare(square) {
       if (!targets.includes(t)) targets.push(t);
     }
 
+    // Fake-check fallback: chess.js may have filtered out non-check-resolving
+    // moves, but a mutator rule may have invalidated the threat. Offer
+    // pseudo-legal destinations so the player can submit them. The server
+    // re-validates and rejects if the check is real.
+    if (state.chessInstance.in_check() && state.mutatorState?.activeRules?.length) {
+      const pseudo = getClientPseudoLegalDestinations(square, piece, pieces);
+      for (const t of pseudo) {
+        if (!targets.includes(t)) targets.push(t);
+      }
+    }
+
     // Destination-based restrictions
     if (isRuleActiveClient('god_kings') || isRuleActiveClient('mind_control')) {
       targets = targets.filter(to => {
@@ -810,6 +821,85 @@ function isRuleActiveClient(ruleId) {
     state.mutatorState.activeRules.some(ar => ar.id === ruleId);
 }
 
+
+// Permissive pseudo-legal destinations for fake-check bypass. Returns squares
+// the piece could shape-reach (sliding/leaping per piece type) without checking
+// for "leaves king in check". The server validates fully and rejects if needed.
+function getClientPseudoLegalDestinations(square, piece, pieces) {
+  const COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const colIdx = COLS.indexOf(square[0]);
+  const rowIdx = parseInt(square[1]) - 1;
+  const results = [];
+
+  function add(c, r) {
+    if (c < 0 || c > 7 || r < 0 || r > 7) return;
+    const sq = COLS[c] + (r + 1);
+    const t = pieces.get(sq);
+    if (t && t.color === piece.color) return;
+    results.push(sq);
+  }
+  function slide(dc, dr) {
+    let c = colIdx + dc, r = rowIdx + dr;
+    while (c >= 0 && c <= 7 && r >= 0 && r <= 7) {
+      const sq = COLS[c] + (r + 1);
+      const t = pieces.get(sq);
+      if (t && t.color === piece.color) break;
+      results.push(sq);
+      if (t) break;
+      c += dc; r += dr;
+    }
+  }
+
+  switch (piece.type) {
+    case 'p': {
+      const dir = piece.color === 'w' ? 1 : -1;
+      // Forward push (only if empty)
+      const f1c = colIdx, f1r = rowIdx + dir;
+      if (f1r >= 0 && f1r <= 7) {
+        const f1 = COLS[f1c] + (f1r + 1);
+        if (!pieces.has(f1)) {
+          results.push(f1);
+          const startRow = piece.color === 'w' ? 1 : 6;
+          if (rowIdx === startRow) {
+            const f2 = COLS[f1c] + (f1r + dir + 1);
+            if (!pieces.has(f2)) results.push(f2);
+          }
+        }
+      }
+      // Diagonal captures
+      for (const dc of [-1, 1]) {
+        const c = colIdx + dc, r = rowIdx + dir;
+        if (c < 0 || c > 7 || r < 0 || r > 7) continue;
+        const sq = COLS[c] + (r + 1);
+        const t = pieces.get(sq);
+        if (t && t.color !== piece.color) results.push(sq);
+      }
+      break;
+    }
+    case 'n':
+      for (const [dc, dr] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+        add(colIdx + dc, rowIdx + dr);
+      }
+      break;
+    case 'b':
+      slide(-1,-1); slide(-1,1); slide(1,-1); slide(1,1);
+      break;
+    case 'r':
+      slide(-1,0); slide(1,0); slide(0,-1); slide(0,1);
+      break;
+    case 'q':
+      slide(-1,-1); slide(-1,1); slide(1,-1); slide(1,1);
+      slide(-1,0); slide(1,0); slide(0,-1); slide(0,1);
+      break;
+    case 'k':
+      for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
+        if (dc === 0 && dr === 0) continue;
+        add(colIdx + dc, rowIdx + dr);
+      }
+      break;
+  }
+  return results;
+}
 
 function getClientCustomMoves(square, pieces) {
   if (!state.currentFen || !state.myColor) return [];

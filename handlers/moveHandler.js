@@ -8,7 +8,7 @@ const {
   removePersistentRule,
 } = require('../mutators/mutatorEngine');
 const { executeHook, getHooks, getWrapMoves, getCustomMoves, getBoardFromRoom, syncChessFromBoard, triggerSoftRestrictions, destroyPiece } = require('../mutators/ruleHooks');
-const { isKingInCheck } = require('../mutators/checkDetector');
+const { isKingInCheck, wouldLeaveKingInCheck, getPseudoLegalDestinations } = require('../mutators/checkDetector');
 const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } = require('../mutators/boardUtils');
 const turnClock = require('../utils/turnClock');
 
@@ -152,6 +152,24 @@ async function handleMove(io, socket, gameManager, data) {
         }
       }
 
+      // Fake-check fallback: chess.js may have filtered out non-check-resolving
+      // moves, but mutator-aware logic says the king isn't actually threatened.
+      // Add pseudo-legal destinations so the restriction filter can evaluate them.
+      if (room.chess.inCheck()) {
+        const fakeBoard = fenToBoard(room.chess.fen());
+        if (!isKingInCheck(fakeBoard, player.color, ms)) {
+          for (const [sq, piece] of fakeBoard) {
+            if (piece.color !== player.color) continue;
+            const dests = getPseudoLegalDestinations(sq, piece, fakeBoard, ms);
+            for (const dest of dests) {
+              if (legalMoves.some(m => m.from === sq && m.to === dest)) continue;
+              if (wouldLeaveKingInCheck(fakeBoard, sq, dest, player.color, ms)) continue;
+              legalMoves.push({ from: sq, to: dest, flags: 'n', san: dest, piece: piece.type });
+            }
+          }
+        }
+      }
+
       // Sort so forced-move rules (tornado, bloodthirsty) run last and override distance filters
       const FORCED_MOVE_RULES = new Set(['tornado', 'bloodthirsty']);
       const sorted = [...restrictionRules].sort((a, b) => {
@@ -219,6 +237,21 @@ async function handleMove(io, socket, gameManager, data) {
       const customMoves = getCustomMoves(room, player.color);
       if (customMoves.find(m => m.from === from && m.to === to)) {
         isBoardMove = true;
+      }
+    }
+  }
+
+  // --- Fake-check bypass: chess.js says we're in check, but mutator-aware
+  // logic says we aren't. Validate the move manually and apply via board.
+  if (!isBoardMove && room.mutatorState && room.chess.inCheck()) {
+    const board = fenToBoard(room.chess.fen());
+    if (!isKingInCheck(board, player.color, room.mutatorState)) {
+      const piece = board.get(from);
+      if (piece && piece.color === player.color) {
+        const dests = getPseudoLegalDestinations(from, piece, board, room.mutatorState);
+        if (dests.includes(to) && !wouldLeaveKingInCheck(board, from, to, player.color, room.mutatorState)) {
+          isBoardMove = true;
+        }
       }
     }
   }

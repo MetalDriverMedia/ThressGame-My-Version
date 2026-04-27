@@ -248,6 +248,36 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       const option = ms.pendingChoice.options.find(o => o.id === ruleId);
       if (!option) return;
 
+      // Two Kids in a Trenchcoat: if the chooser doesn't have 2 pawns, skip
+      // the action entirely and let play continue. Notifies clients that the
+      // rule was selected but couldn't take effect.
+      if (ruleId === 'two_kids_in_a_trenchcoat') {
+        const board = room.chess.board();
+        let pawnCount = 0;
+        for (let r = 0; r < 8 && pawnCount < 2; r++) {
+          for (let c = 0; c < 8 && pawnCount < 2; c++) {
+            const p = board[r][c];
+            if (p && p.color === player.color && p.type === 'p') pawnCount++;
+          }
+        }
+        if (pawnCount < 2) {
+          ms.pendingChoice = null;
+          io.to(room.roomCode).emit('mutatorSelected', { ruleId });
+          io.to(room.roomCode).emit('mutatorActivated', {
+            rule: { id: option.id, name: option.name, description: 'Skipped -- not enough pawns to sacrifice', duration: null },
+            chooser: player.color,
+            fen: room.chess.fen(),
+            mutatorState: serializeMutatorState(ms),
+            checkState: {
+              whiteInCheck: isKingInCheck(fenToBoard(room.chess.fen()), 'w', ms),
+              blackInCheck: isKingInCheck(fenToBoard(room.chess.fen()), 'b', ms),
+            },
+            skipped: true,
+          });
+          return;
+        }
+      }
+
       if (option.requiresChoice) {
         ms.pendingAction = {
           ruleId,

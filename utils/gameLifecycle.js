@@ -198,6 +198,25 @@ function getEffectiveLegalMoves(room) {
 
   let legalMoves = room.chess.moves({ verbose: true });
 
+  // Fake-check fallback: chess.js may have filtered out non-check-resolving moves,
+  // but the mutator-aware check says we're not actually threatened. Add the
+  // pseudo-legal moves so deadlock detection doesn't false-trigger.
+  if (ms && ms.activeRules.length > 0 && room.chess.inCheck()) {
+    const board = fenToBoard(room.chess.fen());
+    if (!isKingInCheck(board, currentTurn, ms)) {
+      const { getPseudoLegalDestinations, wouldLeaveKingInCheck } = require('../mutators/checkDetector');
+      for (const [sq, piece] of board) {
+        if (piece.color !== currentTurn) continue;
+        const dests = getPseudoLegalDestinations(sq, piece, board, ms);
+        for (const to of dests) {
+          if (legalMoves.some(m => m.from === sq && m.to === to)) continue;
+          if (wouldLeaveKingInCheck(board, sq, to, currentTurn, ms)) continue;
+          legalMoves.push({ from: sq, to, flags: 'n', san: to, piece: piece.type });
+        }
+      }
+    }
+  }
+
   if (ms && ms.activeRules.length > 0) {
     const restrictionRules = ms.activeRules.filter(ar => {
       const ruleHooks = getHooks(ar.rule.id);
