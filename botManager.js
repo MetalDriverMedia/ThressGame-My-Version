@@ -8,6 +8,7 @@ const { getBestMove, evaluateBoard } = require('./bots/botAI');
 const { getHooks, getCustomMoves, getWrapMoves } = require('./mutators/ruleHooks');
 const { isRuleActive } = require('./mutators/mutatorEngine');
 const { COLUMNS, ROWS, getIntermediateSquares } = require('./mutators/boardUtils');
+const { checkMutatorDeadlock } = require('./utils/gameLifecycle');
 
 let botCounter = 0;
 
@@ -219,7 +220,10 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
 
   // Get mutator-filtered legal moves (respects active restrictions)
   let allMoves = getMutatorFilteredMoves(room, currentTurn);
-  if (allMoves.length === 0) return;
+  if (allMoves.length === 0) {
+    checkMutatorDeadlock(room, io, gameManager);
+    return;
+  }
 
   // Trap awareness: 50/50 chance to avoid trap moves (mines, pits, death squares)
   if (room.mutatorState && Math.random() < 0.5) {
