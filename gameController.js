@@ -64,11 +64,13 @@ function serializeBoardForClient(chess) {
  */
 function getPublicPlayer(player) {
   if (!player) return null;
+  const { getPlayerRank } = require('./utils/scoreboard');
   return {
     name: player.name,
     color: player.color,
     active: player.active,
-    isBot: player.isBot
+    isBot: player.isBot,
+    crownRank: player.playerHash ? getPlayerRank(player.playerHash) : 0,
   };
 }
 

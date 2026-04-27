@@ -310,15 +310,24 @@ export function syncChessInstance(fen) {
 // PLAYER BARS & TURN INDICATOR
 // ============================================================================
 
+const CROWN_EMOJI = { 1: '\u{1F451}', 2: '\u{1F451}', 3: '\u{1F451}' };
+const CROWN_CSS = { 1: 'crown-gold', 2: 'crown-silver', 3: 'crown-bronze' };
+
+function crownPrefix(player) {
+  const rank = player?.crownRank;
+  if (!rank || rank > 3) return '';
+  return `<span class="player-crown ${CROWN_CSS[rank]}">${CROWN_EMOJI[rank]}</span> `;
+}
+
 export function updatePlayerBars() {
   if (state.isSpectator) {
     if (elements.myNameDisplay) {
       const name = state.whitePlayer?.name || 'White';
-      elements.myNameDisplay.textContent = `${name} (White)`;
+      elements.myNameDisplay.innerHTML = `${crownPrefix(state.whitePlayer)}${escapeHtml(name)} (White)`;
     }
     if (elements.opponentName) {
       const name = state.blackPlayer?.name || 'Black';
-      elements.opponentName.textContent = `${name} (Black)`;
+      elements.opponentName.innerHTML = `${crownPrefix(state.blackPlayer)}${escapeHtml(name)} (Black)`;
     }
     return;
   }
@@ -329,14 +338,14 @@ export function updatePlayerBars() {
   if (elements.myNameDisplay) {
     const name = me?.name || state.myName || 'You';
     const color = state.myColor ? COLOR_NAMES[state.myColor] : '';
-    elements.myNameDisplay.textContent = `${name} (${color})`;
+    elements.myNameDisplay.innerHTML = `${crownPrefix(me)}${escapeHtml(name)} (${color})`;
   }
 
   if (elements.opponentName) {
     const name = opponent?.name || 'Opponent';
     const opponentColor = state.myColor === 'w' ? 'b' : 'w';
     const color = COLOR_NAMES[opponentColor] || '';
-    elements.opponentName.textContent = `${name} (${color})`;
+    elements.opponentName.innerHTML = `${crownPrefix(opponent)}${escapeHtml(name)} (${color})`;
   }
 }
 
@@ -590,21 +599,38 @@ function _diffScoreboard(container, players) {
     if (!newNames.has(name)) el.remove();
   });
 
+  const CROWNS = ['', '\u{1F451}', '\u{1F451}', '\u{1F451}']; // gold/silver/bronze use same emoji, colored via CSS
+  const CROWN_CLASSES = ['', 'crown-gold', 'crown-silver', 'crown-bronze'];
+
   // Update or create entries in order
   let prevEl = null;
   players.forEach((p, i) => {
+    const crownHtml = i < 3
+      ? `<span class="scoreboard-crown ${CROWN_CLASSES[i + 1]}">${CROWNS[i + 1]}</span>`
+      : '';
+
     let entry = existingByName.get(p.name);
     if (entry) {
-      // Update rank, stats, score in place
       entry.querySelector('.scoreboard-rank').textContent = i + 1;
       entry.querySelector('.scoreboard-stats').textContent = `${p.wins}W ${p.losses}L ${p.draws}D`;
       entry.querySelector('.scoreboard-score').textContent = p.score;
+      // Update crown
+      const nameEl = entry.querySelector('.scoreboard-name');
+      const existingCrown = entry.querySelector('.scoreboard-crown');
+      if (i < 3 && !existingCrown) {
+        nameEl.insertAdjacentHTML('beforebegin', crownHtml);
+      } else if (i >= 3 && existingCrown) {
+        existingCrown.remove();
+      } else if (existingCrown && i < 3) {
+        existingCrown.className = `scoreboard-crown ${CROWN_CLASSES[i + 1]}`;
+      }
     } else {
       entry = document.createElement('div');
       entry.className = 'scoreboard-entry';
       entry.dataset.name = p.name;
       entry.innerHTML =
         `<span class="scoreboard-rank">${i + 1}</span>` +
+        crownHtml +
         `<span class="scoreboard-name">${escapeHtml(p.name)}</span>` +
         `<span class="scoreboard-stats">${p.wins}W ${p.losses}L ${p.draws}D</span>` +
         `<span class="scoreboard-score">${p.score}</span>`;

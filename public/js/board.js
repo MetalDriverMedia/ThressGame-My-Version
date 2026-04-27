@@ -135,6 +135,36 @@ export function renderBoard() {
       }
       renderedPieces.set(square, newKey);
     }
+
+    // Crown overlay on kings for top-3 players
+    const existingCrown = squareEl.querySelector('.king-crown-overlay');
+    if (piece && piece.type === 'k') {
+      const player = piece.color === 'w' ? state.whitePlayer : state.blackPlayer;
+      const rank = player?.crownRank;
+      if (rank && rank <= 3) {
+        if (!existingCrown) {
+          const crown = document.createElement('span');
+          crown.className = 'king-crown-overlay';
+          // Random silly offset per square so each crown looks different
+          const seed = square.charCodeAt(0) * 7 + square.charCodeAt(1) * 13;
+          const rotate = ((seed % 61) - 30); // -30 to 30 degrees
+          const nudgeX = ((seed * 3) % 11) - 5; // -5 to 5 px
+          const nudgeY = ((seed * 7) % 7) - 3; // -3 to 3 px
+          crown.style.transform = `rotate(${rotate}deg) translate(${nudgeX}px, ${nudgeY}px)`;
+          crown.style.top = '-2px';
+          crown.style.right = '0px';
+          crown.textContent = '\u{1F451}';
+          const colors = { 1: '#ffd700', 2: '#c0c0c0', 3: '#cd7f32' };
+          crown.style.filter = `drop-shadow(0 1px 2px rgba(0,0,0,0.5))`;
+          crown.dataset.rank = rank;
+          squareEl.appendChild(crown);
+        }
+      } else if (existingCrown) {
+        existingCrown.remove();
+      }
+    } else if (existingCrown) {
+      existingCrown.remove();
+    }
   }
 
   updateHighlights(pieces);

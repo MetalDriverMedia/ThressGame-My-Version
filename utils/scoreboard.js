@@ -79,6 +79,17 @@ function getPlayerScore(hash) {
   return scores[hash] || null;
 }
 
+// Returns 1, 2, 3 for top 3 players, or 0 if not in top 3
+function getPlayerRank(hash) {
+  if (!scores[hash]) return 0;
+  const sorted = Object.entries(scores)
+    .sort((a, b) => b[1].score - a[1].score || b[1].wins - a[1].wins);
+  for (let i = 0; i < Math.min(3, sorted.length); i++) {
+    if (sorted[i][0] === hash) return i + 1;
+  }
+  return 0;
+}
+
 // Prune low-score inactive entries if the store grows too large
 function prune() {
   const entries = Object.entries(scores);
@@ -91,4 +102,4 @@ function prune() {
 // Load on startup
 load();
 
-module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, prune };
+module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, prune };
