@@ -310,13 +310,19 @@ export function syncChessInstance(fen) {
 // PLAYER BARS & TURN INDICATOR
 // ============================================================================
 
-const CROWN_EMOJI = { 1: '\u{1F451}', 2: '\u{1F451}', 3: '\u{1F451}' };
+const CROWN_COLORS = { 1: '#ffd700', 2: '#c0c0c0', 3: '#cd7f32' };
 const CROWN_CSS = { 1: 'crown-gold', 2: 'crown-silver', 3: 'crown-bronze' };
+
+export function crownSvg(rank, size = 14) {
+  const fill = CROWN_COLORS[rank];
+  if (!fill) return '';
+  return `<svg class="crown-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="M2 20h20v2H2zm1-4l3-10 6 4 6-4 3 10z"/><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="3" r="1.5"/><circle cx="19" cy="5" r="1.5"/></svg>`;
+}
 
 function crownPrefix(player) {
   const rank = player?.crownRank;
   if (!rank || rank > 3) return '';
-  return `<span class="player-crown ${CROWN_CSS[rank]}">${CROWN_EMOJI[rank]}</span> `;
+  return `<span class="player-crown">${crownSvg(rank, 16)}</span> `;
 }
 
 export function updatePlayerBars() {
@@ -599,14 +605,11 @@ function _diffScoreboard(container, players) {
     if (!newNames.has(name)) el.remove();
   });
 
-  const CROWNS = ['', '\u{1F451}', '\u{1F451}', '\u{1F451}']; // gold/silver/bronze use same emoji, colored via CSS
-  const CROWN_CLASSES = ['', 'crown-gold', 'crown-silver', 'crown-bronze'];
-
   // Update or create entries in order
   let prevEl = null;
   players.forEach((p, i) => {
     const crownHtml = i < 3
-      ? `<span class="scoreboard-crown ${CROWN_CLASSES[i + 1]}">${CROWNS[i + 1]}</span>`
+      ? `<span class="scoreboard-crown">${crownSvg(i + 1, 12)}</span>`
       : '';
 
     let entry = existingByName.get(p.name);
@@ -622,7 +625,7 @@ function _diffScoreboard(container, players) {
       } else if (i >= 3 && existingCrown) {
         existingCrown.remove();
       } else if (existingCrown && i < 3) {
-        existingCrown.className = `scoreboard-crown ${CROWN_CLASSES[i + 1]}`;
+        existingCrown.innerHTML = crownSvg(i + 1, 12);
       }
     } else {
       entry = document.createElement('div');

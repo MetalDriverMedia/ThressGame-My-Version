@@ -538,16 +538,20 @@ button:not(:disabled):active {
 .scoreboard-entry:nth-child(3) .scoreboard-rank { color: #cd7f32; }
 
 .scoreboard-crown {
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
   margin-right: 2px;
 }
 
-.crown-gold { color: #ffd700; }
-.crown-silver { color: #c0c0c0; }
-.crown-bronze { color: #cd7f32; }
-
 .player-crown {
-  font-size: 0.9em;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.crown-icon {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* King piece crown overlay */
