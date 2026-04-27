@@ -62,9 +62,18 @@ function getBestMoveFromPool(chess, moves, color) {
   let bestScore = -Infinity;
 
   for (const move of moves) {
-    chess.move(move);
-    const score = evaluateBoard(chess, color) + Math.random() * 10;
-    chess.undo();
+    let score;
+    // Custom moves (flags 'n') can't be evaluated by chess.js — use heuristic
+    if (move.flags === 'n') {
+      const target = chess.get(move.to);
+      // Simple capture value for custom moves; random baseline otherwise
+      const customPieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+      score = target ? (customPieceValues[target.type] || 0) : Math.random() * 10;
+    } else {
+      chess.move(move);
+      score = evaluateBoard(chess, color) + Math.random() * 10;
+      chess.undo();
+    }
 
     if (score > bestScore) {
       bestScore = score;
