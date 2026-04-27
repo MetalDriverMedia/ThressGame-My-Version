@@ -123,35 +123,41 @@ h2 {
    LANDING PANEL
    ============================================================================ */
 
-.landing-panel {
+.landing-wrapper {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: center;
   max-width: 1100px;
   margin: 0 auto;
 }
 
-.landing-columns {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-  margin-top: 32px;
-}
-
-.landing-col-rooms {
+.landing-panel {
+  max-width: 700px;
   flex: 1 1 0;
   min-width: 0;
 }
 
-.landing-col-scoreboard {
+.scoreboard-panel {
   flex: 0 0 280px;
   min-width: 0;
+  padding-top: 20px;
 }
 
-@media (max-width: 860px) {
-  .landing-columns {
+@media (max-width: 900px) {
+  .landing-wrapper {
     flex-direction: column;
+    align-items: center;
   }
-  .landing-col-scoreboard {
+  .landing-panel {
+    max-width: 700px;
+    width: 100%;
+  }
+  .scoreboard-panel {
     flex: none;
     width: 100%;
+    max-width: 700px;
+    padding-top: 0;
   }
 }
 
@@ -437,7 +443,7 @@ button:not(:disabled):active {
    ============================================================================ */
 
 .open-rooms-section {
-  margin-top: 0;
+  margin-top: 32px;
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(129, 182, 76, 0.08);
   border-radius: 12px;

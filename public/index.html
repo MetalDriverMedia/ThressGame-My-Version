@@ -13,8 +13,9 @@
     <div id="global-status" class="global-status"></div>
     <main>
       <!-- ============================================================ -->
-      <!-- LANDING PANEL                                                -->
+      <!-- LANDING PANEL + SCOREBOARD                                   -->
       <!-- ============================================================ -->
+      <div id="landing-wrapper" class="landing-wrapper">
       <section id="landing-panel" class="panel landing-panel">
         <div class="landing-header">
           <h1 class="game-title">Thress</h1>
@@ -110,29 +111,26 @@
           </div>
         </div>
 
-        <div class="landing-columns">
-          <!-- Open Rooms Table -->
-          <div class="landing-col-rooms">
-            <div class="open-rooms-section">
-              <h2>Open Rooms</h2>
-              <div id="rooms-list" class="rooms-list">
-                <p class="rooms-empty">No open rooms. Create one!</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Scoreboard -->
-          <div class="landing-col-scoreboard">
-            <div class="scoreboard-section">
-              <h2>Most Attractive Players</h2>
-              <div id="scoreboard-list" class="scoreboard-list">
-                <p class="scoreboard-empty">No scores yet. Go play!</p>
-              </div>
-            </div>
+        <!-- Open Rooms Table -->
+        <div class="open-rooms-section">
+          <h2>Open Rooms</h2>
+          <div id="rooms-list" class="rooms-list">
+            <p class="rooms-empty">No open rooms. Create one!</p>
           </div>
         </div>
 
       </section>
+
+      <!-- Scoreboard (separate panel alongside landing) -->
+      <aside id="scoreboard-panel" class="scoreboard-panel">
+        <div class="scoreboard-section">
+          <h2>Most Attractive Players</h2>
+          <div id="scoreboard-list" class="scoreboard-list">
+            <p class="scoreboard-empty">No scores yet. Go play!</p>
+          </div>
+        </div>
+      </aside>
+      </div><!-- /landing-wrapper -->
 
       <!-- ============================================================ -->
       <!-- WAITING PANEL                                                -->
@@ -336,7 +334,7 @@
         Concept by DougDoug
       </a>
       <span class="footer-separator">&bull;</span>
-      <a href="https://github.com/Ryukaki/ThressGame" target="_blank" rel="noopener" class="footer-version">v1.0.68</a>
+      <a href="https://github.com/Ryukaki/ThressGame" target="_blank" rel="noopener" class="footer-version">v1.0.69</a>
     </footer>
 
     <script src="config.js"></script>

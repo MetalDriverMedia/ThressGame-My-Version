@@ -31,6 +31,12 @@ export function showPanel(panelId) {
     }
   });
 
+  // Scoreboard is only visible on the landing page
+  const scoreboardPanel = document.getElementById('scoreboard-panel');
+  if (scoreboardPanel) {
+    scoreboardPanel.classList.toggle('hidden', panelId !== 'landing');
+  }
+
   if (panelId === 'landing') {
     startRoomsPolling();
   } else {
