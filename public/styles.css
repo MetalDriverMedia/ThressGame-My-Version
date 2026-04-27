@@ -73,6 +73,7 @@ body {
 
 main {
   width: min(1100px, 100%);
+  zoom: 0.9;
 }
 
 .hidden {
