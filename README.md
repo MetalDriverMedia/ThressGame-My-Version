@@ -13,6 +13,7 @@ Play at [playanarchychess.com](https://playanarchychess.com).
 - **Room codes** - create/join games with human-readable codes
 - **Spectator mode** - watch live games
 - **Bot opponent** - practice mode with minimax AI
+- **Scoreboard** - persistent leaderboard tracking wins/losses/draws per player (IP-hashed, no PII stored)
 
 ## Setup
 

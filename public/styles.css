@@ -124,8 +124,35 @@ h2 {
    ============================================================================ */
 
 .landing-panel {
-  max-width: 700px;
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+.landing-columns {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 32px;
+}
+
+.landing-col-rooms {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.landing-col-scoreboard {
+  flex: 0 0 280px;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .landing-columns {
+    flex-direction: column;
+  }
+  .landing-col-scoreboard {
+    flex: none;
+    width: 100%;
+  }
 }
 
 .landing-header {
@@ -410,7 +437,7 @@ button:not(:disabled):active {
    ============================================================================ */
 
 .open-rooms-section {
-  margin-top: 32px;
+  margin-top: 0;
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(129, 182, 76, 0.08);
   border-radius: 12px;
@@ -441,6 +468,102 @@ button:not(:disabled):active {
   padding: 16px;
   font-size: 0.9rem;
   font-family: var(--font-heading);
+}
+
+/* --- Scoreboard --- */
+.scoreboard-section {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(129, 182, 76, 0.08);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.scoreboard-section h2 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin: 0 0 12px 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.scoreboard-list {
+  max-height: 360px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-dim) transparent;
+}
+
+.scoreboard-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scoreboard-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scoreboard-list::-webkit-scrollbar-thumb {
+  background: var(--text-dim);
+  border-radius: 3px;
+}
+
+.scoreboard-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 16px;
+  font-size: 0.9rem;
+  font-family: var(--font-heading);
+}
+
+.scoreboard-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(129, 182, 76, 0.06);
+}
+
+.scoreboard-entry:last-child {
+  border-bottom: none;
+}
+
+.scoreboard-rank {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-width: 22px;
+  text-align: right;
+}
+
+.scoreboard-entry:nth-child(1) .scoreboard-rank { color: #ffd700; }
+.scoreboard-entry:nth-child(2) .scoreboard-rank { color: #c0c0c0; }
+.scoreboard-entry:nth-child(3) .scoreboard-rank { color: #cd7f32; }
+
+.scoreboard-name {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreboard-score {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+  min-width: 30px;
+  text-align: right;
+}
+
+.scoreboard-stats {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .rooms-table {

@@ -7,7 +7,7 @@ import { startPageBackground } from './animated-bg.js';
 import { loadFromStorage } from './storage.js';
 import {
   showPanel, setUIRenderers, preloadPieceImages, flashStatus,
-  renderCapturedPieces,
+  renderCapturedPieces, fetchScoreboard,
 } from './ui.js';
 import { renderBoard, setOverlayRenderer } from './board.js';
 import { renderBoardOverlays } from './mutatorUI.js';
@@ -134,8 +134,9 @@ function connectSocket() {
   bindGameEvents();
   bindModalEvents();
 
-  // Load mutator settings
+  // Load mutator settings and scoreboard
   initMutatorSettings();
+  fetchScoreboard();
 
   // Try resume session
   const savedToken = loadFromStorage(STORAGE_KEYS.token);

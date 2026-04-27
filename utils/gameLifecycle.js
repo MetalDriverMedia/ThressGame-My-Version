@@ -5,6 +5,7 @@ const { getHooks, getCustomMoves, getWrapMoves } = require('../mutators/ruleHook
 const { isRuleActive } = require('../mutators/mutatorEngine');
 const { isKingInCheck } = require('../mutators/checkDetector');
 const { fenToBoard } = require('../mutators/boardUtils');
+const { recordWin, recordLoss, recordDraw } = require('./scoreboard');
 
 const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -40,6 +41,21 @@ function emitGameEnded(io, room, reason, winner) {
     payload.loser = winner === 'w' ? 'b' : 'w';
   }
   io.to(room.roomCode).emit('gameEnded', payload);
+
+  // Update scoreboard (skip bot games)
+  const w = room.white;
+  const b = room.black;
+  if (!w || !b || w.isBot || b.isBot) return;
+
+  if (winner) {
+    const winPlayer = winner === 'w' ? w : b;
+    const losePlayer = winner === 'w' ? b : w;
+    recordWin(winPlayer.playerHash, winPlayer.name);
+    recordLoss(losePlayer.playerHash, losePlayer.name);
+  } else {
+    recordDraw(w.playerHash, w.name);
+    recordDraw(b.playerHash, b.name);
+  }
 }
 
 /**

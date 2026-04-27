@@ -41,6 +41,7 @@ export function showPanel(panelId) {
 export function showLanding() {
   resetGameState();
   showPanel('landing');
+  fetchScoreboard();
 }
 
 export function showWaiting(code) {
@@ -532,5 +533,76 @@ export function preloadPieceImages() {
         }
       }
     });
+  });
+}
+
+// --- Scoreboard ---
+
+export async function fetchScoreboard() {
+  const container = document.getElementById('scoreboard-list');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/scoreboard');
+    const data = await res.json();
+    _diffScoreboard(container, data.players || []);
+  } catch (err) {
+    console.warn('[ui] Failed to load scoreboard:', err);
+  }
+}
+
+function _diffScoreboard(container, players) {
+  // Show/hide empty message
+  let emptyMsg = container.querySelector('.scoreboard-empty');
+  if (!players.length) {
+    if (!emptyMsg) {
+      emptyMsg = document.createElement('p');
+      emptyMsg.className = 'scoreboard-empty';
+      emptyMsg.textContent = 'No scores yet. Go play!';
+      container.appendChild(emptyMsg);
+    }
+    // Remove existing entries
+    container.querySelectorAll('.scoreboard-entry').forEach(e => e.remove());
+    return;
+  }
+  if (emptyMsg) emptyMsg.remove();
+
+  const existing = container.querySelectorAll('.scoreboard-entry');
+  const existingByName = new Map();
+  existing.forEach(el => existingByName.set(el.dataset.name, el));
+
+  const newNames = new Set(players.map(p => p.name));
+
+  // Remove entries no longer in top list
+  existingByName.forEach((el, name) => {
+    if (!newNames.has(name)) el.remove();
+  });
+
+  // Update or create entries in order
+  let prevEl = null;
+  players.forEach((p, i) => {
+    let entry = existingByName.get(p.name);
+    if (entry) {
+      // Update rank, stats, score in place
+      entry.querySelector('.scoreboard-rank').textContent = i + 1;
+      entry.querySelector('.scoreboard-stats').textContent = `${p.wins}W ${p.losses}L ${p.draws}D`;
+      entry.querySelector('.scoreboard-score').textContent = p.score;
+    } else {
+      entry = document.createElement('div');
+      entry.className = 'scoreboard-entry';
+      entry.dataset.name = p.name;
+      entry.innerHTML =
+        `<span class="scoreboard-rank">${i + 1}</span>` +
+        `<span class="scoreboard-name">${escapeHtml(p.name)}</span>` +
+        `<span class="scoreboard-stats">${p.wins}W ${p.losses}L ${p.draws}D</span>` +
+        `<span class="scoreboard-score">${p.score}</span>`;
+    }
+
+    // Ensure correct order in DOM
+    const nextSibling = prevEl ? prevEl.nextSibling : container.firstChild;
+    if (entry !== nextSibling) {
+      container.insertBefore(entry, nextSibling);
+    }
+    prevEl = entry;
   });
 }

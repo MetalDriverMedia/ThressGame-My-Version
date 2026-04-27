@@ -1,0 +1,94 @@
+const fs = require('fs');
+const path = require('path');
+
+const SCOREBOARD_PATH = path.join(__dirname, '..', 'data', 'scoreboard.json');
+const MAX_ENTRIES = 5000;
+
+// In-memory scoreboard: { [playerHash]: { name, score, wins, losses, draws, lastPlayed } }
+let scores = {};
+
+function load() {
+  try {
+    if (fs.existsSync(SCOREBOARD_PATH)) {
+      scores = JSON.parse(fs.readFileSync(SCOREBOARD_PATH, 'utf8'));
+    }
+  } catch (err) {
+    console.warn('[scoreboard] Failed to load:', err.message);
+    scores = {};
+  }
+}
+
+function save() {
+  try {
+    const dir = path.dirname(SCOREBOARD_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SCOREBOARD_PATH, JSON.stringify(scores, null, 2));
+  } catch (err) {
+    console.warn('[scoreboard] Failed to save:', err.message);
+  }
+}
+
+function ensureEntry(hash, name) {
+  if (!scores[hash]) {
+    scores[hash] = { name, score: 0, wins: 0, losses: 0, draws: 0, lastPlayed: Date.now() };
+  } else {
+    // Update display name to the most recent one
+    scores[hash].name = name;
+  }
+}
+
+function recordWin(hash, name) {
+  ensureEntry(hash, name);
+  scores[hash].wins++;
+  scores[hash].score++;
+  scores[hash].lastPlayed = Date.now();
+  prune();
+  save();
+}
+
+function recordLoss(hash, name) {
+  ensureEntry(hash, name);
+  scores[hash].losses++;
+  scores[hash].score = Math.max(0, scores[hash].score - 1);
+  scores[hash].lastPlayed = Date.now();
+  save();
+}
+
+function recordDraw(hash, name) {
+  ensureEntry(hash, name);
+  scores[hash].draws++;
+  scores[hash].score++;
+  scores[hash].lastPlayed = Date.now();
+  save();
+}
+
+function getTop(n = 25) {
+  return Object.entries(scores)
+    .map(([hash, data]) => ({
+      name: data.name,
+      score: data.score,
+      wins: data.wins,
+      losses: data.losses,
+      draws: data.draws,
+    }))
+    .sort((a, b) => b.score - a.score || b.wins - a.wins)
+    .slice(0, n);
+}
+
+function getPlayerScore(hash) {
+  return scores[hash] || null;
+}
+
+// Prune low-score inactive entries if the store grows too large
+function prune() {
+  const entries = Object.entries(scores);
+  if (entries.length <= MAX_ENTRIES) return;
+  entries.sort((a, b) => b[1].score - a[1].score || b[1].lastPlayed - a[1].lastPlayed);
+  scores = Object.fromEntries(entries.slice(0, MAX_ENTRIES));
+  save();
+}
+
+// Load on startup
+load();
+
+module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, prune };
