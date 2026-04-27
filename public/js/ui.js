@@ -544,6 +544,12 @@ export function preloadPieceImages() {
 
 // --- Scoreboard ---
 
+export function onScoreboardUpdate(payload) {
+  const container = document.getElementById('scoreboard-list');
+  if (!container) return;
+  _diffScoreboard(container, payload.players || []);
+}
+
 export async function fetchScoreboard() {
   const container = document.getElementById('scoreboard-list');
   if (!container) return;

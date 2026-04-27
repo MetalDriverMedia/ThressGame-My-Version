@@ -7,7 +7,7 @@ import { startPageBackground } from './animated-bg.js';
 import { loadFromStorage } from './storage.js';
 import {
   showPanel, setUIRenderers, preloadPieceImages, flashStatus,
-  renderCapturedPieces, fetchScoreboard,
+  renderCapturedPieces, fetchScoreboard, onScoreboardUpdate,
 } from './ui.js';
 import { renderBoard, setOverlayRenderer } from './board.js';
 import { renderBoardOverlays } from './mutatorUI.js';
@@ -60,6 +60,7 @@ function connectSocket() {
   state.socket.on('resumeSuccess', onResumeSuccess);
   state.socket.on('resumeRejected', onResumeRejected);
   state.socket.on('roomsList', onRoomsList);
+  state.socket.on('scoreboardUpdate', onScoreboardUpdate);
 
   // Spectator events
   state.socket.on('spectateSuccess', onSpectateSuccess);

@@ -5,7 +5,7 @@ const { getHooks, getCustomMoves, getWrapMoves } = require('../mutators/ruleHook
 const { isRuleActive } = require('../mutators/mutatorEngine');
 const { isKingInCheck } = require('../mutators/checkDetector');
 const { fenToBoard } = require('../mutators/boardUtils');
-const { recordWin, recordLoss, recordDraw } = require('./scoreboard');
+const { recordWin, recordLoss, recordDraw, getTop } = require('./scoreboard');
 
 const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -56,6 +56,9 @@ function emitGameEnded(io, room, reason, winner) {
     recordDraw(w.playerHash, w.name);
     recordDraw(b.playerHash, b.name);
   }
+
+  // Push updated scoreboard to everyone in the lobby
+  io.to('lobby').emit('scoreboardUpdate', { players: getTop(25) });
 }
 
 /**
