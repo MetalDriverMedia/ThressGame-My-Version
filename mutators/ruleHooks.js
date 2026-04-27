@@ -827,6 +827,12 @@ const hooks = {
       const sq2 = Array.isArray(choiceData) ? choiceData[1] : choiceData.square2;
       if (sq1 && sq2) {
         safeSwapSquares(room, board, sq1, sq2);
+        // Lock both swapped pieces for this turn so the rule can't be used to
+        // teleport an attacker into a one-shot king capture
+        const ms = room.mutatorState;
+        if (!ms.boardModifiers.lockedSquares) ms.boardModifiers.lockedSquares = [];
+        ms.boardModifiers.lockedSquares.push({ square: sq1 });
+        ms.boardModifiers.lockedSquares.push({ square: sq2 });
       }
       syncChessFromBoard(room, board);
     },
@@ -1067,6 +1073,12 @@ const hooks = {
         square: choiceData,
         expiresAtMove,
       };
+    },
+    onExpire(room) {
+      // Clear the tornado square modifier so it doesn't visually linger or
+      // re-trigger if the underlying state outlives the active rule.
+      const ms = room.mutatorState;
+      ms.boardModifiers.tornadoSquare = null;
     },
     getLegalMoveModifiers(room, playerColor) {
       const ms = room.mutatorState;
@@ -1753,6 +1765,10 @@ function executeHook(ruleId, hookName, ...args) {
 function getWrapMoves(room, playerColor) {
   const board = getBoardFromRoom(room);
   const wrapMoves = [];
+  const ms = room.mutatorState;
+  const activeIds = new Set((ms?.activeRules || []).map(ar => ar.rule.id));
+  const estrogenActive = activeIds.has('estrogen');
+  const trainsRightsActive = activeIds.has('trains_rights');
 
   // Sliding directions that involve horizontal movement (can wrap left/right)
   const slideDirs = {
@@ -1773,9 +1789,16 @@ function getWrapMoves(room, playerColor) {
     const col = colIndex(square);
     const row = rowIndex(square);
 
-    // Sliding pieces (rook, bishop, queen)
-    if (slideDirs[piece.type]) {
-      for (const [dr, dc] of slideDirs[piece.type]) {
+    // Estrogen / Trains Rights: kings can slide like queens, so they get queen-like wraps too.
+    // (Trains Rights swaps king<->queen movement, so kings slide.)
+    let pieceTypeForSlide = piece.type;
+    if (piece.type === 'k' && (estrogenActive || trainsRightsActive)) {
+      pieceTypeForSlide = 'q';
+    }
+
+    // Sliding pieces (rook, bishop, queen, or sliding-king)
+    if (slideDirs[pieceTypeForSlide]) {
+      for (const [dr, dc] of slideDirs[pieceTypeForSlide]) {
         // Slide from piece position toward the edge, then wrap
         let r = row;
         let c = col;
@@ -2011,14 +2034,24 @@ function getCustomMoves(room, playerColor) {
   // If the chain reaches the board edge, the last piece is removed.
   if (activeIds.has('pawns_learned_strength')) {
     const dir = forwardDir(playerColor);
+    const startRow = playerColor === 'w' ? '2' : '7';
     for (const [sq, piece] of board) {
       if (piece.color !== playerColor || piece.type !== 'p') continue;
       const ahead = offsetSquare(sq, 0, dir);
       if (!ahead) continue;
       const occupant = board.get(ahead);
-      if (!occupant) continue; // normal pawn move, chess.js handles it
-      // Always valid -- chain either shifts into empty space or last piece falls off
-      tryAdd(sq, ahead);
+      if (occupant) {
+        // Push 1 square ahead -- chain shifts or last piece falls off the board
+        tryAdd(sq, ahead);
+      }
+      // First-move 2-square push: pawn on starting rank can land 2 ahead if
+      // intermediate is empty and destination is occupied.
+      if (sq[1] === startRow) {
+        const twoAhead = offsetSquare(sq, 0, dir * 2);
+        if (twoAhead && !board.has(ahead) && board.has(twoAhead)) {
+          tryAdd(sq, twoAhead);
+        }
+      }
     }
   }
 

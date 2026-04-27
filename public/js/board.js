@@ -1017,6 +1017,14 @@ function getClientCustomMoves(square, pieces) {
       const occ = pieces.get(ahead);
       if (occ) results.push(ahead);
     }
+    // First-move 2-square push: only when intermediate is empty and destination is occupied
+    const startRow = piece.color === 'w' ? 1 : 6;
+    if (row === startRow) {
+      const twoAhead = offset(col, row, 0, dir * 2);
+      if (twoAhead && ahead && !pieces.has(ahead) && pieces.has(twoAhead)) {
+        results.push(twoAhead);
+      }
+    }
   }
 
   return results;
@@ -1039,8 +1047,14 @@ function getClientWrapMoves(square, pieces) {
     q: [[0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
   };
 
-  if (slideDirs[piece.type]) {
-    for (const [dr, dc] of slideDirs[piece.type]) {
+  // Estrogen / Trains Rights: kings slide like queens, so they get queen-like wraps
+  let pieceTypeForSlide = piece.type;
+  if (piece.type === 'k' && (isRuleActiveClient('estrogen') || isRuleActiveClient('trains_rights'))) {
+    pieceTypeForSlide = 'q';
+  }
+
+  if (slideDirs[pieceTypeForSlide]) {
+    for (const [dr, dc] of slideDirs[pieceTypeForSlide]) {
       let r = row, c = col, blocked = false;
       while (true) {
         r += dr; c += dc;
