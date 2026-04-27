@@ -124,40 +124,29 @@ h2 {
    ============================================================================ */
 
 .landing-wrapper {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-  justify-content: center;
-  max-width: 1100px;
+  position: relative;
+  max-width: 700px;
   margin: 0 auto;
 }
 
 .landing-panel {
   max-width: 700px;
-  flex: 1 1 0;
-  min-width: 0;
+  margin: 0 auto;
 }
 
 .scoreboard-panel {
-  flex: 0 0 280px;
-  min-width: 0;
-  padding-top: 20px;
+  position: absolute;
+  left: calc(100% + 24px);
+  top: 0;
+  width: 280px;
 }
 
-@media (max-width: 900px) {
-  .landing-wrapper {
-    flex-direction: column;
-    align-items: center;
-  }
-  .landing-panel {
-    max-width: 700px;
-    width: 100%;
-  }
+@media (max-width: 1100px) {
   .scoreboard-panel {
-    flex: none;
+    position: static;
     width: 100%;
     max-width: 700px;
-    padding-top: 0;
+    margin: 24px auto 0;
   }
 }
 
