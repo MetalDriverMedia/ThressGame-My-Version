@@ -90,6 +90,14 @@ function getPlayerRank(hash) {
   return 0;
 }
 
+// How many points the #1 player leads #2 by (0 if fewer than 2 entries)
+function getGoldLead() {
+  const sorted = Object.values(scores)
+    .sort((a, b) => b.score - a.score || b.wins - a.wins);
+  if (sorted.length < 2) return 0;
+  return Math.max(0, sorted[0].score - sorted[1].score);
+}
+
 // Prune low-score inactive entries if the store grows too large
 function prune() {
   const entries = Object.entries(scores);
@@ -102,4 +110,4 @@ function prune() {
 // Load on startup
 load();
 
-module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, prune };
+module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, getGoldLead, prune };

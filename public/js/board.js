@@ -141,18 +141,20 @@ export function renderBoard() {
     if (piece && piece.type === 'k') {
       const player = piece.color === 'w' ? state.whitePlayer : state.blackPlayer;
       const rank = player?.crownRank;
+      const goldLead = player?.crownGoldLead || 0;
       if (rank && rank <= 3) {
-        if (!existingCrown || existingCrown.dataset.rank !== String(rank)) {
+        const sig = `${rank}|${goldLead}`;
+        if (!existingCrown || existingCrown.dataset.sig !== sig) {
           if (existingCrown) existingCrown.remove();
           const crown = document.createElement('span');
           crown.className = 'king-crown-overlay';
-          crown.dataset.rank = rank;
+          crown.dataset.sig = sig;
           // Subtle silly tilt per square; centered above the king
           const seed = square.charCodeAt(0) * 7 + square.charCodeAt(1) * 13;
           const rotate = ((seed % 41) - 20); // -20 to 20 degrees
           const nudgeX = ((seed * 3) % 7) - 3; // -3 to 3 px
           crown.style.transform = `translateX(-50%) rotate(${rotate}deg) translateX(${nudgeX}px)`;
-          crown.innerHTML = crownSvg(rank, 18);
+          crown.innerHTML = crownSvg(rank, 18, goldLead);
           squareEl.appendChild(crown);
         }
       } else if (existingCrown) {

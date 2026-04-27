@@ -380,16 +380,27 @@ export function syncChessInstance(fen) {
 const CROWN_COLORS = { 1: '#ffd700', 2: '#c0c0c0', 3: '#cd7f32' };
 const CROWN_CSS = { 1: 'crown-gold', 2: 'crown-silver', 3: 'crown-bronze' };
 
-export function crownSvg(rank, size = 14) {
+// Rank-aware size multipliers: bronze is the baseline, silver +33%, gold +50%
+// plus +1% per point #1 leads #2 by.
+function crownSizeMultiplier(rank, goldLead = 0) {
+  if (rank === 3) return 1;
+  if (rank === 2) return 1.33;
+  if (rank === 1) return 1.5 + Math.max(0, goldLead) * 0.01;
+  return 1;
+}
+
+export function crownSvg(rank, baseSize = 14, goldLead = 0) {
   const fill = CROWN_COLORS[rank];
   if (!fill) return '';
+  const size = Math.round(baseSize * crownSizeMultiplier(rank, goldLead));
   return `<svg class="crown-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="M2 20h20v2H2zm1-4l3-10 6 4 6-4 3 10z"/><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="3" r="1.5"/><circle cx="19" cy="5" r="1.5"/></svg>`;
 }
 
 function crownPrefix(player) {
   const rank = player?.crownRank;
   if (!rank || rank > 3) return '';
-  return `<span class="player-crown">${crownSvg(rank, 16)}</span> `;
+  const goldLead = player.crownGoldLead || 0;
+  return `<span class="player-crown">${crownSvg(rank, 16, goldLead)}</span> `;
 }
 
 export function updatePlayerBars() {
@@ -689,10 +700,11 @@ function _diffScoreboard(container, players) {
   // Position-based diff: each slot N in the DOM corresponds to rank N.
   // This avoids identity confusion when names collide or scores tie.
   const slots = container.querySelectorAll('.scoreboard-entry');
+  const goldLead = players.length >= 2 ? (players[0].score - players[1].score) : 0;
 
   players.forEach((p, i) => {
     const crownHtml = i < 3
-      ? `<span class="scoreboard-crown">${crownSvg(i + 1, 12)}</span>`
+      ? `<span class="scoreboard-crown">${crownSvg(i + 1, 12, goldLead)}</span>`
       : '';
     const inner =
       `<span class="scoreboard-rank">${i + 1}</span>` +
@@ -703,8 +715,8 @@ function _diffScoreboard(container, players) {
 
     let slot = slots[i];
     if (slot) {
-      // Only rewrite if content changed (cheap comparison via data attribute)
-      const sig = `${p.name}|${p.score}|${p.wins}|${p.losses}|${p.draws}|${i}`;
+      // Include goldLead in the signature so size changes trigger a rewrite
+      const sig = `${p.name}|${p.score}|${p.wins}|${p.losses}|${p.draws}|${i}|${goldLead}`;
       if (slot.dataset.sig !== sig) {
         slot.innerHTML = inner;
         slot.dataset.name = p.name;
@@ -714,7 +726,7 @@ function _diffScoreboard(container, players) {
       slot = document.createElement('div');
       slot.className = 'scoreboard-entry';
       slot.dataset.name = p.name;
-      slot.dataset.sig = `${p.name}|${p.score}|${p.wins}|${p.losses}|${p.draws}|${i}`;
+      slot.dataset.sig = `${p.name}|${p.score}|${p.wins}|${p.losses}|${p.draws}|${i}|${goldLead}`;
       slot.innerHTML = inner;
       container.appendChild(slot);
     }
