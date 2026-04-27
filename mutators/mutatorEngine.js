@@ -33,6 +33,7 @@ function createMutatorState() {
       livingBombs: [],      // [{square, piece, expiresAtMove}]
       invulnerable: [],     // [{square, color, expiresAtMove}]
       tornadoSquare: null,  // {square, expiresAtMove}
+      lockedSquares: [],    // [{square}] -- pieces that cannot move on the current turn (cleared on each move)
     },
     pendingChoice: null,
     pendingAction: null,

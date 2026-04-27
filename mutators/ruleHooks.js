@@ -891,6 +891,10 @@ const hooks = {
       // Place a bishop of the chooser's color
       if (bishopSquare) {
         safePlacePiece(room, board, bishopSquare, 'b', chooserColor);
+        // Lock the new bishop -- chooser can't move it on this same turn
+        const ms = room.mutatorState;
+        if (!ms.boardModifiers.lockedSquares) ms.boardModifiers.lockedSquares = [];
+        ms.boardModifiers.lockedSquares.push({ square: bishopSquare });
       }
       syncChessFromBoard(room, board);
     },

@@ -220,7 +220,7 @@ const RULES = [
   {
     id: 'two_kids_in_a_trenchcoat',
     name: 'Two Kids in a Trenchcoat',
-    description: 'Sacrifice 2 Pawns to put a new Bishop anywhere on the board',
+    description: 'Sacrifice 2 Pawns to put a new Bishop anywhere on the board. The new Bishop can\'t move on the turn it\'s placed.',
     flavor: 'Totally a real Bishop, sir.',
     weight: 6,
     duration: null,

@@ -120,6 +120,12 @@ async function handleMove(io, socket, gameManager, data) {
     }
   }
 
+  // Block moves from squares locked this turn (e.g. a bishop just placed by Two Kids in a Trenchcoat)
+  if (room.mutatorState?.boardModifiers?.lockedSquares?.some(ls => ls.square === from)) {
+    socket.emit('moveRejected', { message: "That piece can't move on the same turn it was placed." });
+    return;
+  }
+
   // Handle promotion
   const chosenPromotion = validatePromotion(pieceAtFrom, to, promotion);
 
@@ -387,6 +393,11 @@ async function handleMove(io, socket, gameManager, data) {
     piece: moveResult.piece,
     promotion: moveResult.promotion || null,
   });
+
+  // Clear locked squares -- the lock only applies to the turn when the piece was placed
+  if (room.mutatorState?.boardModifiers?.lockedSquares?.length) {
+    room.mutatorState.boardModifiers.lockedSquares = [];
+  }
 
   // Broadcast the applied move to the room
   io.to(room.roomCode).emit('moveApplied', {

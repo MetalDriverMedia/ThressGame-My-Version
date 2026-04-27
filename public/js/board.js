@@ -608,6 +608,10 @@ export function getLegalMovesForSquare(square) {
     if (isRuleActiveClient('hobbit_battle') && piece.type !== 'p') return [];
     if (isRuleActiveClient('ice_age') && (square[0] === 'a' || square[0] === 'h')) return [];
 
+    // Locked squares (e.g. bishop just placed by Two Kids in a Trenchcoat)
+    const lockedSquares = state.mutatorState?.boardModifiers?.lockedSquares;
+    if (lockedSquares && lockedSquares.some(ls => ls.square === square)) return [];
+
     if (mods.frozenCols) {
       if (mods.frozenCols.has(square[0])) return [];
     }
