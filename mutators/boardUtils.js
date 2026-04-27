@@ -59,12 +59,35 @@ function boardToFenPlacement(board) {
 
 /**
  * Rebuild a full FEN from a board map and metadata.
- * Strips castling rights and en passant (mutators often invalidate them).
+ * Validates castling rights against current piece positions; strips en passant.
  */
-function buildFen(board, turn, fullMoveNum) {
+function buildFen(board, turn, fullMoveNum, castling) {
   const placement = boardToFenPlacement(board);
-  // After mutator board manipulation, castling rights and en passant are unreliable
-  return `${placement} ${turn} - - 0 ${fullMoveNum || 1}`;
+  const castlingField = validateCastlingRights(board, castling);
+  return `${placement} ${turn} ${castlingField} - 0 ${fullMoveNum || 1}`;
+}
+
+// Strip castling rights only for sides whose king or relevant rook has moved/been removed
+function validateCastlingRights(board, castling) {
+  if (!castling || castling === '-') return '-';
+  let valid = '';
+  if (castling.includes('K')) {
+    const k = board.get('e1'), r = board.get('h1');
+    if (k && k.type === 'k' && k.color === 'w' && r && r.type === 'r' && r.color === 'w') valid += 'K';
+  }
+  if (castling.includes('Q')) {
+    const k = board.get('e1'), r = board.get('a1');
+    if (k && k.type === 'k' && k.color === 'w' && r && r.type === 'r' && r.color === 'w') valid += 'Q';
+  }
+  if (castling.includes('k')) {
+    const k = board.get('e8'), r = board.get('h8');
+    if (k && k.type === 'k' && k.color === 'b' && r && r.type === 'r' && r.color === 'b') valid += 'k';
+  }
+  if (castling.includes('q')) {
+    const k = board.get('e8'), r = board.get('a8');
+    if (k && k.type === 'k' && k.color === 'b' && r && r.type === 'r' && r.color === 'b') valid += 'q';
+  }
+  return valid || '-';
 }
 
 /**

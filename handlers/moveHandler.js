@@ -9,7 +9,7 @@ const {
 } = require('../mutators/mutatorEngine');
 const { executeHook, getHooks, getWrapMoves, getCustomMoves, getBoardFromRoom, syncChessFromBoard, triggerSoftRestrictions, destroyPiece } = require('../mutators/ruleHooks');
 const { isKingInCheck } = require('../mutators/checkDetector');
-const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare, getIntermediateSquares } = require('../mutators/boardUtils');
+const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } = require('../mutators/boardUtils');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -300,65 +300,39 @@ async function handleMove(io, socket, gameManager, data) {
     }
   }
 
-  // --- Path trap interception (mines, bottomless pits) ---
-  // Check BEFORE broadcasting so the client never sees a piece arrive then vanish.
+  // --- Destination trap detection (mines, bottomless pits) ---
+  // Traps trigger only when a piece LANDS on them, not when passing through.
   if (room.mutatorState) {
     const ms = room.mutatorState;
-    const path = getIntermediateSquares(moveResult.from, moveResult.to);
-    if (path.length > 0) {
-      // Find the first trap along the path
-      let trapSquare = null;
-      let trapType = null; // 'mine' | 'pit'
-      let trapIndex = -1;
+    const dest = moveResult.to;
+    let trapType = null;
+    let trapIndex = -1;
 
-      for (const sq of path) {
-        if (ms.boardModifiers.mines && ms.boardModifiers.mines.length > 0) {
-          const idx = ms.boardModifiers.mines.findIndex(m => m.square === sq);
-          if (idx !== -1) {
-            trapSquare = sq;
-            trapType = 'mine';
-            trapIndex = idx;
-            break;
-          }
-        }
-        if (ms.boardModifiers.bottomlessPits) {
-          if (ms.boardModifiers.bottomlessPits.find(p => p.square === sq)) {
-            trapSquare = sq;
-            trapType = 'pit';
-            break;
-          }
-        }
+    if (ms.boardModifiers.mines && ms.boardModifiers.mines.length > 0) {
+      const idx = ms.boardModifiers.mines.findIndex(m => m.square === dest);
+      if (idx !== -1) {
+        trapType = 'mine';
+        trapIndex = idx;
       }
+    }
+    if (!trapType && ms.boardModifiers.bottomlessPits) {
+      if (ms.boardModifiers.bottomlessPits.find(p => p.square === dest)) {
+        trapType = 'pit';
+      }
+    }
 
-      if (trapSquare) {
-        const board = getBoardFromRoom(room);
-        const piece = board.get(moveResult.to);
-        if (piece && piece.type !== 'k') {
-          // Move piece from destination to the trap square
-          board.delete(moveResult.to);
-          board.set(trapSquare, piece);
-          // Restore captured piece if the move was a capture
-          if (moveResult.captured) {
-            const capturedColor = moveResult.color === 'w' ? 'b' : 'w';
-            board.set(moveResult.to, { type: moveResult.captured, color: capturedColor });
+    if (trapType) {
+      const board = getBoardFromRoom(room);
+      const piece = board.get(dest);
+      if (piece && piece.type !== 'k') {
+        destroyPiece(room, board, dest);
+        syncChessFromBoard(room, board);
+
+        if (trapType === 'mine') {
+          ms.boardModifiers.mines.splice(trapIndex, 1);
+          if (ms.boardModifiers.mines.length === 0) {
+            removePersistentRule(ms, 'minefield');
           }
-          // Destroy the piece at the trap square
-          destroyPiece(room, board, trapSquare);
-          syncChessFromBoard(room, board);
-
-          // Consume the mine if it was a mine
-          if (trapType === 'mine') {
-            ms.boardModifiers.mines.splice(trapIndex, 1);
-            if (ms.boardModifiers.mines.length === 0) {
-              removePersistentRule(ms, 'minefield');
-            }
-          }
-
-          // Rewrite moveResult so the broadcast reflects the corrected state
-          moveResult.to = trapSquare;
-          moveResult.captured = null;
-          moveResult.flags = 'n';
-          moveResult.san = (piece.type !== 'p' ? piece.type.toUpperCase() : '') + trapSquare;
         }
       }
     }

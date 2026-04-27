@@ -115,12 +115,16 @@ function activateRule(mutatorState, ruleId, chooserColor, choiceData, secondChoi
   if (!rule) return null;
 
   const duration = overrideDuration || rule.duration;
+  let expiresAtMove = null;
+  if (Array.isArray(duration)) {
+    expiresAtMove = mutatorState.moveCount + duration[0] + Math.floor(Math.random() * (duration[1] - duration[0] + 1));
+  } else if (typeof duration === 'number') {
+    expiresAtMove = mutatorState.moveCount + duration;
+  }
   const activeRule = {
     rule,
     activatedAtMove: mutatorState.moveCount,
-    expiresAtMove: duration
-      ? mutatorState.moveCount + duration[0] + Math.floor(Math.random() * (duration[1] - duration[0] + 1))
-      : null,
+    expiresAtMove,
     chooser: chooserColor,
     choiceData: choiceData || null,
     secondChoiceData: secondChoiceData || null,

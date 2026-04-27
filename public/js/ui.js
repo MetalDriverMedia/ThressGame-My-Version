@@ -588,62 +588,47 @@ function _diffScoreboard(container, players) {
       emptyMsg.textContent = 'No scores yet. Go play!';
       container.appendChild(emptyMsg);
     }
-    // Remove existing entries
     container.querySelectorAll('.scoreboard-entry').forEach(e => e.remove());
     return;
   }
   if (emptyMsg) emptyMsg.remove();
 
-  const existing = container.querySelectorAll('.scoreboard-entry');
-  const existingByName = new Map();
-  existing.forEach(el => existingByName.set(el.dataset.name, el));
+  // Position-based diff: each slot N in the DOM corresponds to rank N.
+  // This avoids identity confusion when names collide or scores tie.
+  const slots = container.querySelectorAll('.scoreboard-entry');
 
-  const newNames = new Set(players.map(p => p.name));
-
-  // Remove entries no longer in top list
-  existingByName.forEach((el, name) => {
-    if (!newNames.has(name)) el.remove();
-  });
-
-  // Update or create entries in order
-  let prevEl = null;
   players.forEach((p, i) => {
     const crownHtml = i < 3
       ? `<span class="scoreboard-crown">${crownSvg(i + 1, 12)}</span>`
       : '';
+    const inner =
+      `<span class="scoreboard-rank">${i + 1}</span>` +
+      crownHtml +
+      `<span class="scoreboard-name">${escapeHtml(p.name)}</span>` +
+      `<span class="scoreboard-stats">${p.wins}W ${p.losses}L ${p.draws}D</span>` +
+      `<span class="scoreboard-score">${p.score}</span>`;
 
-    let entry = existingByName.get(p.name);
-    if (entry) {
-      entry.querySelector('.scoreboard-rank').textContent = i + 1;
-      entry.querySelector('.scoreboard-stats').textContent = `${p.wins}W ${p.losses}L ${p.draws}D`;
-      entry.querySelector('.scoreboard-score').textContent = p.score;
-      // Update crown
-      const nameEl = entry.querySelector('.scoreboard-name');
-      const existingCrown = entry.querySelector('.scoreboard-crown');
-      if (i < 3 && !existingCrown) {
-        nameEl.insertAdjacentHTML('beforebegin', crownHtml);
-      } else if (i >= 3 && existingCrown) {
-        existingCrown.remove();
-      } else if (existingCrown && i < 3) {
-        existingCrown.innerHTML = crownSvg(i + 1, 12);
+    let slot = slots[i];
+    if (slot) {
+      // Only rewrite if content changed (cheap comparison via data attribute)
+      const sig = `${p.name}|${p.score}|${p.wins}|${p.losses}|${p.draws}|${i}`;
+      if (slot.dataset.sig !== sig) {
+        slot.innerHTML = inner;
+        slot.dataset.name = p.name;
+        slot.dataset.sig = sig;
       }
     } else {
-      entry = document.createElement('div');
-      entry.className = 'scoreboard-entry';
-      entry.dataset.name = p.name;
-      entry.innerHTML =
-        `<span class="scoreboard-rank">${i + 1}</span>` +
-        crownHtml +
-        `<span class="scoreboard-name">${escapeHtml(p.name)}</span>` +
-        `<span class="scoreboard-stats">${p.wins}W ${p.losses}L ${p.draws}D</span>` +
-        `<span class="scoreboard-score">${p.score}</span>`;
+      slot = document.createElement('div');
+      slot.className = 'scoreboard-entry';
+      slot.dataset.name = p.name;
+      slot.dataset.sig = `${p.name}|${p.score}|${p.wins}|${p.losses}|${p.draws}|${i}`;
+      slot.innerHTML = inner;
+      container.appendChild(slot);
     }
-
-    // Ensure correct order in DOM
-    const nextSibling = prevEl ? prevEl.nextSibling : container.firstChild;
-    if (entry !== nextSibling) {
-      container.insertBefore(entry, nextSibling);
-    }
-    prevEl = entry;
   });
+
+  // Trim excess slots beyond the new list length
+  for (let j = players.length; j < slots.length; j++) {
+    slots[j].remove();
+  }
 }

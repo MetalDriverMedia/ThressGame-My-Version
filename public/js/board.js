@@ -147,15 +147,12 @@ export function renderBoard() {
           const crown = document.createElement('span');
           crown.className = 'king-crown-overlay';
           crown.dataset.rank = rank;
-          // Random silly offset per square
+          // Subtle silly tilt per square; centered above the king
           const seed = square.charCodeAt(0) * 7 + square.charCodeAt(1) * 13;
-          const rotate = ((seed % 61) - 30);
-          const nudgeX = ((seed * 3) % 11) - 5;
-          const nudgeY = ((seed * 7) % 7) - 3;
-          crown.style.transform = `rotate(${rotate}deg) translate(${nudgeX}px, ${nudgeY}px)`;
-          crown.style.top = '-2px';
-          crown.style.right = '0px';
-          crown.innerHTML = crownSvg(rank, 20);
+          const rotate = ((seed % 41) - 20); // -20 to 20 degrees
+          const nudgeX = ((seed * 3) % 7) - 3; // -3 to 3 px
+          crown.style.transform = `translateX(-50%) rotate(${rotate}deg) translateX(${nudgeX}px)`;
+          crown.innerHTML = crownSvg(rank, 18);
           squareEl.appendChild(crown);
         }
       } else if (existingCrown) {

@@ -47,8 +47,9 @@ function syncChessFromBoard(room, board) {
   }
   const parts = room.chess.fen().split(' ');
   const turn = parts[1];
+  const castling = parts[2];
   const fullMove = parts[5];
-  const newFen = buildFen(board, turn, fullMove);
+  const newFen = buildFen(board, turn, fullMove, castling);
   room.chess.load(newFen, { skipValidation: true });
 }
 
@@ -120,6 +121,13 @@ function destroyPiece(room, board, square) {
     const invul = (ms.boardModifiers.invulnerable || [])
       .filter(iv => !iv.expiresAtMove || ms.moveCount < iv.expiresAtMove);
     if (invul.some(iv => iv.square === square)) {
+      return false;
+    }
+
+    // Mr. Freeze -- pieces in frozen columns are immune to destruction
+    const frozen = (ms.boardModifiers.frozenColumns || [])
+      .filter(fc => !fc.expiresAtMove || ms.moveCount < fc.expiresAtMove);
+    if (frozen.some(fc => fc.immune && fc.column === square[0])) {
       return false;
     }
   }
@@ -313,47 +321,41 @@ const hooks = {
 
   // --- The Rumbling ---------------------------------------------
   the_rumbling: {
-    onActivate(room) {
+    onActivate(room, chooserColor) {
       const board = getBoardFromRoom(room);
-      // White pawns advance and kill
-      for (let r = 6; r >= 0; r--) {
-        for (const col of COLUMNS) {
-          const sq = col + ROWS[r];
-          const piece = board.get(sq);
-          if (!piece || piece.type !== 'p' || piece.color !== 'w') continue;
-          const target = col + ROWS[r + 1];
-          if (target && !isSquareHardBlocked(room, target)) {
+
+      function advance(color) {
+        const dir = color === 'w' ? 1 : -1;
+        // Iterate so pawns closer to promotion go first
+        const rRange = color === 'w'
+          ? [6, 5, 4, 3, 2, 1, 0]
+          : [1, 2, 3, 4, 5, 6, 7];
+        for (const r of rRange) {
+          for (const col of COLUMNS) {
+            const sq = col + ROWS[r];
+            const piece = board.get(sq);
+            if (!piece || piece.type !== 'p' || piece.color !== color) continue;
+            const targetR = r + dir;
+            if (targetR < 0 || targetR > 7) continue;
+            const target = col + ROWS[targetR];
+            if (isSquareHardBlocked(room, target)) continue;
             const targetPiece = board.get(target);
-            if (!targetPiece || targetPiece.type !== 'k') {
-              // Move pawn forward, killing non-King occupant
-              if (targetPiece) {
-                if (!destroyPiece(room, board, target)) continue; // Parry saved it, pawn can't advance
-              }
-              movePiece(board, sq, target);
-              triggerSoftRestrictions(room, board, target);
+            if (targetPiece && targetPiece.type === 'k') continue;
+            if (targetPiece) {
+              if (!destroyPiece(room, board, target)) continue; // Parry saved it
             }
+            movePiece(board, sq, target);
+            triggerSoftRestrictions(room, board, target);
           }
         }
       }
-      // Black pawns advance and kill
-      for (let r = 1; r < 8; r++) {
-        for (const col of COLUMNS) {
-          const sq = col + ROWS[r];
-          const piece = board.get(sq);
-          if (!piece || piece.type !== 'p' || piece.color !== 'b') continue;
-          const target = col + ROWS[r - 1];
-          if (target && !isSquareHardBlocked(room, target)) {
-            const targetPiece = board.get(target);
-            if (!targetPiece || targetPiece.type !== 'k') {
-              if (targetPiece) {
-                if (!destroyPiece(room, board, target)) continue; // Parry saved it
-              }
-              movePiece(board, sq, target);
-              triggerSoftRestrictions(room, board, target);
-            }
-          }
-        }
-      }
+
+      // Chooser's pawns advance first
+      const first = chooserColor === 'b' ? 'b' : 'w';
+      const second = first === 'w' ? 'b' : 'w';
+      advance(first);
+      advance(second);
+
       syncChessFromBoard(room, board);
     },
   },
@@ -1357,13 +1359,15 @@ const hooks = {
       });
     },
     onAfterMove(room, playerColor, move) {
-      // Track living bomb as its piece moves
+      // Track living bomb as its piece moves; remove if its piece was captured
       const ms = room.mutatorState;
-      for (const lb of ms.boardModifiers.livingBombs) {
-        if (lb.square === move.from) {
-          lb.square = move.to;
-        }
-      }
+      ms.boardModifiers.livingBombs = ms.boardModifiers.livingBombs.filter(lb => {
+        // Bomb piece was captured -- remove the bomb (don't transfer to attacker)
+        if (lb.square === move.to && lb.square !== move.from) return false;
+        // Bomb piece moved -- track its new square
+        if (lb.square === move.from) lb.square = move.to;
+        return true;
+      });
     },
     onExpire(room) {
       const ms = room.mutatorState;
@@ -1405,6 +1409,16 @@ const hooks = {
       if (activeRules.length === 0) return null;
       const frozenSquares = new Set(activeRules.map(ar => ar.choiceData));
       return (moves) => moves.filter(m => !frozenSquares.has(m.from));
+    },
+    onCapture(room, playerColor, capturedPiece, captureSquare) {
+      // If the targeted piece was captured, void this Mitosis instance so
+      // onExpire doesn't duplicate the attacker's piece
+      const ms = room.mutatorState;
+      for (const ar of ms.activeRules) {
+        if (ar.rule.id === 'mitosis' && ar.choiceData === captureSquare) {
+          ar.choiceData = null;
+        }
+      }
     },
     onExpire(room, activeRule) {
       if (!activeRule || !activeRule.choiceData) return;
@@ -1605,13 +1619,8 @@ const hooks = {
   // Stub entries for completeness:
   proletariat: {
     getLegalMoveModifiers(room, playerColor) {
-      // All pieces move like pawns -- block all standard non-pawn moves
-      return (moves) => {
-        const pawnMoves = moves.filter(m => m.piece === 'p');
-        // Non-pawn pieces use custom moves instead; return pawn moves only
-        // Safety fallback: if no pawn moves exist, allow all (player has no pawns)
-        return pawnMoves.length > 0 ? pawnMoves : moves;
-      };
+      // All pieces move like pawns. Keep pawn moves + custom moves (non-pawn pawn-like moves).
+      return (moves) => moves.filter(m => m.piece === 'p' || m.flags === 'n');
     },
   },
   short_stop: {

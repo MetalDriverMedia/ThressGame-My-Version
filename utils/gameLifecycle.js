@@ -96,10 +96,15 @@ function triggerCoinFlip(room, io, forColor) {
   const ms = room.mutatorState;
   if (!ms) return;
 
+  // Skip if a flip already happened this move (prevents double-flip when rule choice
+  // and post-move coin flip both fire in the same turn)
+  if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.moveCount) return;
+  if (ms.pendingCoinFlip && ms.pendingCoinFlip.moveCount === ms.moveCount) return;
+
   const nextPlayer = room.getPlayer(forColor);
 
   if (room.manualCoinFlip) {
-    ms.pendingCoinFlip = { forPlayer: forColor };
+    ms.pendingCoinFlip = { forPlayer: forColor, moveCount: ms.moveCount };
     if (nextPlayer && nextPlayer.isBot) {
       // Bot flips with humanizing delay
       const flipDelay = 800 + Math.random() * 400; // 0.8-1.2s

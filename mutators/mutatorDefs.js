@@ -38,8 +38,8 @@ const RULES = [
   {
     id: 'going_woke',
     name: 'Going Woke',
-    description: 'All Pieces in the right half of the board get pushed to the left 1 square (if open)',
-    flavor: 'Everybody moves left.',
+    description: 'All Pieces on the kingside (files E-H) get pushed toward the queenside 1 square (if open)',
+    flavor: 'Everybody shifts queenside.',
     weight: 10,
     duration: null,
     category: RULE_CATEGORIES.BOARD,
@@ -135,8 +135,8 @@ const RULES = [
   },
   {
     id: 'column_swap',
-    name: 'Column Swap',
-    description: 'All Pieces in two random columns are swapped',
+    name: 'File Swap',
+    description: 'All Pieces in two random files are swapped',
     flavor: 'Musical chairs, but vertical.',
     weight: 7,
     duration: null,
@@ -290,7 +290,7 @@ const RULES = [
   {
     id: 'a_light_breeze',
     name: 'A Light Breeze',
-    description: 'All Pieces in columns D and E move one square to the right, killing anything in the way',
+    description: 'All Pieces in files D and E move one square toward the kingside (toward H), killing anything in the way',
     flavor: 'A gentle nudge.',
     weight: 6,
     duration: null,
@@ -332,7 +332,7 @@ const RULES = [
   {
     id: 'moving_up_the_corporate_ladder',
     name: 'Moving Up the Corporate Ladder',
-    description: 'Pick 2 Pieces in the same column, then swap them',
+    description: 'Pick 2 Pieces in the same file, then swap them',
     flavor: 'Promotions for everyone!',
     weight: 7,
     duration: null,
@@ -346,7 +346,7 @@ const RULES = [
   {
     id: 'hurricane',
     name: 'Hurricane',
-    description: 'Pick 1 row, all Pieces in it are pushed to the left-most empty square',
+    description: 'Pick 1 rank, all Pieces in it are pushed toward the queenside (file A) into empty squares',
     flavor: 'Hold on to your hats.',
     weight: 6,
     duration: null,
@@ -490,7 +490,7 @@ const RULES = [
   {
     id: 'early_promotion',
     name: 'Early Promotion',
-    description: 'Pawns promote on the 6th row instead of the 8th',
+    description: 'Pawns promote on the 6th rank instead of the 8th',
     flavor: 'Fast-tracked for success.',
     weight: 7,
     duration: [3, 9],
@@ -708,7 +708,7 @@ const RULES = [
   {
     id: 'ice_age',
     name: 'Ice Age',
-    description: 'Pieces in columns 1 and 8 are frozen',
+    description: 'Pieces in files A and H are frozen',
     flavor: 'The edges freeze over.',
     weight: 6,
     duration: [3, 9],
@@ -842,7 +842,7 @@ const RULES = [
   {
     id: 'mr_freeze',
     name: 'Mr. Freeze',
-    description: 'Pick 1 column. All Pieces in it are frozen and immune until this expires',
+    description: 'Pick 1 file. All Pieces in it are frozen and immune until this expires',
     flavor: 'Ice to meet you.',
     weight: 6,
     duration: [3, 9],
@@ -870,7 +870,7 @@ const RULES = [
   {
     id: 'no_mans_land',
     name: 'No Man\'s Land',
-    description: 'Pick 1 column. No Pieces may enter or cross the column. Pieces in it can leave.',
+    description: 'Pick 1 file. No Pieces may enter or cross the file. Pieces in it can leave.',
     flavor: 'Danger zone.',
     weight: 5,
     duration: [3, 9],
@@ -972,7 +972,7 @@ const RULES = [
   {
     id: 'time_bomb',
     name: 'Time Bomb',
-    description: 'All Pieces in Column E die when this rule expires',
+    description: 'All Pieces in file E die when this rule expires',
     flavor: 'Tick tock.',
     weight: 5,
     duration: [3, 9],
