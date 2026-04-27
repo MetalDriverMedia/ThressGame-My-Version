@@ -101,7 +101,7 @@ export function initializeBoard() {
 
       const squareEl = document.createElement('button');
       squareEl.type = 'button';
-      squareEl.className = `square ${(fileIndex + rank) % 2 === 0 ? 'dark' : 'light'}`;
+      squareEl.className = `square ${(fileIndex + rank) % 2 === 0 ? 'light' : 'dark'}`;
       squareEl.dataset.square = square;
       squareEl.setAttribute('aria-label', `Square ${square}`);
       squareEl.addEventListener('click', () => handleSquareClick(square));
