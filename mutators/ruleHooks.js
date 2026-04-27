@@ -907,7 +907,7 @@ const hooks = {
   // --- Hobbit Battle ----------------------------------------------
   hobbit_battle: {
     getLegalMoveModifiers(room, playerColor) {
-      // ONLY Pawns can be moved
+      // ONLY Pawns can be moved — return empty if no pawns, deadlock detection handles it
       return (moves) => moves.filter(m => m.piece === 'p');
     },
   },

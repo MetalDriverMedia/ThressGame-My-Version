@@ -187,10 +187,7 @@ function getMutatorFilteredMoves(room, playerColor) {
     const ruleHooks = getHooks(ar.rule.id);
     const filterFn = ruleHooks.getLegalMoveModifiers(room, playerColor);
     if (filterFn) {
-      const filtered = filterFn(legalMoves);
-      if (filtered.length > 0) {
-        legalMoves = filtered;
-      }
+      legalMoves = filterFn(legalMoves);
     }
   }
 

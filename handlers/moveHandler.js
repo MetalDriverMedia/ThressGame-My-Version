@@ -163,11 +163,7 @@ async function handleMove(io, socket, gameManager, data) {
         const ruleHooks = getHooks(ar.rule.id);
         const filterFn = ruleHooks.getLegalMoveModifiers(room, player.color);
         if (filterFn) {
-          const filtered = filterFn(legalMoves);
-          if (filtered.length > 0) {
-            legalMoves = filtered;
-          }
-          // If filtered is empty, skip this filter (safety fallback)
+          legalMoves = filterFn(legalMoves);
         }
       }
 
