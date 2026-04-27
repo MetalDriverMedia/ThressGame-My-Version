@@ -138,7 +138,7 @@ h2 {
   position: absolute;
   left: calc(100% + 24px);
   top: 0;
-  width: 280px;
+  width: 360px;
 }
 
 @media (max-width: 1100px) {
