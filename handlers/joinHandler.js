@@ -157,6 +157,12 @@ function handleJoinRoom(io, socket, gameManager, data, startGame, broadcastRoomU
   }
 
   const playerHash = generatePlayerHash(socket);
+  // Reject joining your own room (same player hash already in the room)
+  if ((room.white && room.white.playerHash === playerHash) ||
+      (room.black && room.black.playerHash === playerHash)) {
+    socket.emit('joinError', "You can't join your own room.");
+    return;
+  }
   const color = room.getOpenColor();
   if (!color) {
     socket.emit('joinError', 'Room is full.');

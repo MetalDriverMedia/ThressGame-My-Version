@@ -1620,7 +1620,12 @@ button:not(:disabled):active {
 }
 
 .board-overlay-mine { color: #ff5555; }
-.board-overlay-blocked { color: #888; font-weight: bold; font-size: 1.6em; }
+.board-overlay-blocked {
+  color: #ffe680;
+  font-weight: 900;
+  font-size: 1.8em;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 80, 0, 0.5), 1px 1px 0 #000;
+}
 .board-overlay-pit { color: #8b0000; }
 .board-overlay-portal { color: #7b68ee; }
 .board-overlay-treasure { color: #ffd700; }

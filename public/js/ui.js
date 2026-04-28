@@ -67,10 +67,19 @@ function formatClock(ms) {
 }
 
 export function startTurnClock(turnStartTime, durationMs) {
+  // Cancel any running tick loop before starting the new clock so we don't
+  // have multiple rAF callbacks racing on stale state.
+  if (state.turnTimerRaf) {
+    cancelAnimationFrame(state.turnTimerRaf);
+    state.turnTimerRaf = null;
+  }
   state.turnStartTime = turnStartTime;
   state.turnDurationMs = durationMs || 180000;
   const timerEl = document.getElementById('turn-timer');
-  if (timerEl) timerEl.classList.remove('hidden');
+  if (timerEl) {
+    timerEl.classList.remove('hidden');
+    timerEl.classList.remove('warning', 'critical');
+  }
   _tickTurnClock();
 }
 

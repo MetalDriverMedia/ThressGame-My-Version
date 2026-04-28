@@ -949,16 +949,13 @@ const hooks = {
   // --- No Cowards ------------------------------------------------
   no_cowards: {
     getLegalMoveModifiers(room, playerColor) {
-      // All moves must advance toward opponent's side
-      return (moves) => {
-        const forward = moves.filter(m => {
-          const fromRow = parseInt(m.from[1]);
-          const toRow = parseInt(m.to[1]);
-          return playerColor === 'w' ? toRow > fromRow : toRow < fromRow;
-        });
-        // If no forward moves, allow all (safety)
-        return forward.length > 0 ? forward : moves;
-      };
+      // All moves must advance toward opponent's side. No fallback: if a
+      // player has no forward moves and is in check, that's a real mate.
+      return (moves) => moves.filter(m => {
+        const fromRow = parseInt(m.from[1]);
+        const toRow = parseInt(m.to[1]);
+        return playerColor === 'w' ? toRow > fromRow : toRow < fromRow;
+      });
     },
   },
 

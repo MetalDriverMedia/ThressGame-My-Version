@@ -248,9 +248,39 @@ function canPieceMove(square, piece, mutatorState) {
 }
 
 /**
+ * Returns true if the king of the given color is invulnerable to capture
+ * under the active rules. Such a king is never in check.
+ */
+function isKingInvulnerable(kingSquare, mutatorState) {
+  if (!mutatorState || !mutatorState.activeRules) return false;
+  const activeIds = new Set(mutatorState.activeRules.map(ar => ar.rule.id));
+
+  // Christmas Truce: no pieces can die
+  if (activeIds.has('christmas_truce')) return true;
+  // Hobbit Slaughter: only pawns can die -- king is non-pawn
+  if (activeIds.has('hobbit_slaughter')) return true;
+  // God Kings: kings can't be captured
+  if (activeIds.has('god_kings')) return true;
+
+  const ms = mutatorState;
+  // Invulnerability Potion: protected pieces can't die
+  const invul = (ms.boardModifiers?.invulnerable || [])
+    .filter(iv => !iv.expiresAtMove || ms.moveCount < iv.expiresAtMove);
+  if (invul.some(iv => iv.square === kingSquare)) return true;
+
+  // Mr. Freeze: pieces in frozen columns are immune to destruction
+  const frozen = (ms.boardModifiers?.frozenColumns || [])
+    .filter(fc => !fc.expiresAtMove || ms.moveCount < fc.expiresAtMove);
+  if (frozen.some(fc => fc.immune && fc.column === kingSquare[0])) return true;
+
+  return false;
+}
+
+/**
  * Check if a king of the given color is in check.
  * Honors mutator-aware attack patterns AND ignores attackers that are
  * fully immobilized by an active rule (their threat can't be delivered).
+ * Also returns false if the king is invulnerable under active rules.
  *
  * @param {Map} board - Board state
  * @param {string} kingColor - 'w' or 'b'
@@ -267,6 +297,9 @@ function isKingInCheck(board, kingColor, mutatorState) {
     }
   }
   if (!kingSquare) return false; // no king found (shouldn't happen)
+
+  // Rules that make the king invulnerable -> never in check
+  if (isKingInvulnerable(kingSquare, mutatorState)) return false;
 
   // Check if any enemy piece can attack the king's square
   const enemyColor = kingColor === 'w' ? 'b' : 'w';

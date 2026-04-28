@@ -278,6 +278,34 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         }
       }
 
+      // Drafted for Battle: skip if either player has no bishops or knights
+      if (ruleId === 'drafted_for_battle') {
+        const board = room.chess.board();
+        const hasBN = { w: false, b: false };
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 8; c++) {
+            const p = board[r][c];
+            if (p && (p.type === 'b' || p.type === 'n')) hasBN[p.color] = true;
+          }
+        }
+        if (!hasBN.w || !hasBN.b) {
+          ms.pendingChoice = null;
+          io.to(room.roomCode).emit('mutatorSelected', { ruleId });
+          io.to(room.roomCode).emit('mutatorActivated', {
+            rule: { id: option.id, name: option.name, description: 'Skipped -- a player has no Bishops or Knights to swap with', duration: null },
+            chooser: player.color,
+            fen: room.chess.fen(),
+            mutatorState: serializeMutatorState(ms),
+            checkState: {
+              whiteInCheck: isKingInCheck(fenToBoard(room.chess.fen()), 'w', ms),
+              blackInCheck: isKingInCheck(fenToBoard(room.chess.fen()), 'b', ms),
+            },
+            skipped: true,
+          });
+          return;
+        }
+      }
+
       if (option.requiresChoice) {
         ms.pendingAction = {
           ruleId,
@@ -450,7 +478,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
             return;
           }
         }
-        if ((choiceType === 'piece' || choiceType === 'friendly_piece') && target) {
+        if ((choiceType === 'piece' || choiceType === 'friendly_piece' || choiceType === 'two_pieces_same_column') && target) {
           const piece = room.chess.get(target);
           if (piece && piece.type === 'k') {
             socket.emit('mutatorAction', {

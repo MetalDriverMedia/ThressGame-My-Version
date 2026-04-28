@@ -88,6 +88,9 @@ export const state = {
   turnTimerRaf: null,
   quietResignAvailable: false,
 
+  // Mutator-aware check state from server (overrides chess.js's check display)
+  checkState: null,
+
   // Mutator
   mutatorState: null,
   allRules: [],

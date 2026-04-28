@@ -167,6 +167,7 @@ export async function onMoveApplied(payload) {
 
   if (payload.white) state.whitePlayer = payload.white;
   if (payload.black) state.blackPlayer = payload.black;
+  if (payload.checkState) state.checkState = payload.checkState;
 
   state.selectedSquare = null;
   state.legalMoves = [];

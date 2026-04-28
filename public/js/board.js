@@ -174,7 +174,13 @@ export function updateHighlights(pieces) {
     pieces = parseFenToPieces(state.currentFen);
   }
 
-  const inCheck = state.chessInstance && state.chessInstance.in_check();
+  // Prefer the server's mutator-aware check status; fall back to chess.js
+  // when the server hasn't reported one yet (legacy / no mutator state).
+  const checkState = state.checkState;
+  const inCheckFn = (color) => {
+    if (checkState) return color === 'w' ? checkState.whiteInCheck : checkState.blackInCheck;
+    return state.chessInstance && state.chessInstance.in_check() && state.currentTurn === color;
+  };
   const legalSet = new Set(state.legalMoves);
 
   for (const [square, squareEl] of boardSquares) {
@@ -185,7 +191,7 @@ export function updateHighlights(pieces) {
     const piece = pieces.get(square);
     squareEl.classList.toggle('legal-move', isLegal && !piece);
     squareEl.classList.toggle('legal-capture', isLegal && !!piece);
-    squareEl.classList.toggle('in-check', !!(inCheck && piece && piece.type === 'k' && piece.color === state.currentTurn));
+    squareEl.classList.toggle('in-check', !!(piece && piece.type === 'k' && inCheckFn(piece.color)));
   }
 }
 

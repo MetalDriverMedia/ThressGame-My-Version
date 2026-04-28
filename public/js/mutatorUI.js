@@ -203,14 +203,21 @@ function buildCardElement({ id, name, description, status, isChooser, badgeText,
 
 function createCardElement(rule, isChooser) {
   let durationText;
-  if (!rule.duration) {
+  const dur = rule.duration;
+  if (dur == null || dur === false) {
     durationText = 'Instant';
-  } else if (Array.isArray(rule.duration)) {
-    durationText = rule.duration[0] === rule.duration[1]
-      ? `${rule.duration[0]} moves`
-      : `${rule.duration[0]}-${rule.duration[1]} moves`;
+  } else if (Array.isArray(dur)) {
+    if (typeof dur[0] !== 'number' || typeof dur[1] !== 'number') {
+      durationText = 'Active';
+    } else if (dur[0] === dur[1]) {
+      durationText = `${dur[0]} move${dur[0] !== 1 ? 's' : ''}`;
+    } else {
+      durationText = `${dur[0]}-${dur[1]} moves`;
+    }
+  } else if (typeof dur === 'number' && Number.isFinite(dur)) {
+    durationText = `${dur} move${dur !== 1 ? 's' : ''}`;
   } else {
-    durationText = `${rule.duration} move${rule.duration !== 1 ? 's' : ''}`;
+    durationText = 'Active';
   }
 
   return buildCardElement({

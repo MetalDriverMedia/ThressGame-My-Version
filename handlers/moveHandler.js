@@ -198,6 +198,15 @@ async function handleMove(io, socket, gameManager, data) {
         return;
       }
     }
+
+    // Mutator-aware self-check validation: chess.js doesn't know about
+    // mutator-extended attacks (e.g. Short Stop's orthogonal knight attacks).
+    // Reject moves that leave the king in mutator-aware check.
+    const board = fenToBoard(room.chess.fen());
+    if (wouldLeaveKingInCheck(board, from, to, player.color, room.mutatorState)) {
+      socket.emit('moveRejected', { error: 'That move would leave your king in check.' });
+      return;
+    }
   }
 
   // Charge a strike based on submit time (before any RPS / mutator early-returns).
@@ -380,6 +389,35 @@ async function handleMove(io, socket, gameManager, data) {
         }
       }
     }
+
+    // Castling: also check the rook's destination square for traps
+    const flags = moveResult.flags || '';
+    if (flags.includes('k') || flags.includes('q')) {
+      const rank = moveResult.color === 'w' ? '1' : '8';
+      const rookDest = flags.includes('k') ? 'f' + rank : 'd' + rank;
+      let castleTrap = null;
+      let castleTrapIdx = -1;
+      if (ms.boardModifiers.mines?.length) {
+        const idx = ms.boardModifiers.mines.findIndex(m => m.square === rookDest);
+        if (idx !== -1) { castleTrap = 'mine'; castleTrapIdx = idx; }
+      }
+      if (!castleTrap && ms.boardModifiers.bottomlessPits?.find(p => p.square === rookDest)) {
+        castleTrap = 'pit';
+      }
+      if (castleTrap) {
+        const board = getBoardFromRoom(room);
+        if (board.get(rookDest)) {
+          destroyPiece(room, board, rookDest);
+          syncChessFromBoard(room, board);
+          if (castleTrap === 'mine') {
+            ms.boardModifiers.mines.splice(castleTrapIdx, 1);
+            if (ms.boardModifiers.mines.length === 0) {
+              removePersistentRule(ms, 'minefield');
+            }
+          }
+        }
+      }
+    }
   }
 
   // Record move in history
@@ -414,6 +452,10 @@ async function handleMove(io, socket, gameManager, data) {
     moveHistory: room.moveHistory,
     white: getPublicPlayer(room.white),
     black: getPublicPlayer(room.black),
+    checkState: room.mutatorState ? {
+      whiteInCheck: isKingInCheck(fenToBoard(room.chess.fen()), 'w', room.mutatorState),
+      blackInCheck: isKingInCheck(fenToBoard(room.chess.fen()), 'b', room.mutatorState),
+    } : null,
   });
 
   // Check end-of-game conditions
