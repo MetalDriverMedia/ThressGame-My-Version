@@ -16,6 +16,7 @@ function clearClock(room) {
     room._turnExpireTimer = null;
   }
   room.turnStartTime = null;
+  room.turnClockFor = null;
 }
 
 function shouldRunClock(room) {
@@ -29,15 +30,17 @@ function shouldRunClock(room) {
 let _onTimeoutResign = null;
 function setTimeoutResignHandler(fn) { _onTimeoutResign = fn; }
 
-function startClock(room, io) {
+function startClock(room, io, forColor) {
   ensureClockState(room);
   clearClock(room);
   if (!shouldRunClock(room)) return;
 
   room.turnStartTime = Date.now();
+  room.turnClockFor = forColor || room.chess.turn();
   io.to(room.roomCode).emit('turnClockUpdate', {
     turnStartTime: room.turnStartTime,
     durationMs: TURN_DURATION_MS,
+    forColor: room.turnClockFor,
   });
 
   // If the timer expires without a move, the staller is auto-resigned (full
@@ -48,7 +51,7 @@ function startClock(room, io) {
 
 function _onTurnExpired(room, io) {
   if (room.status !== 'active') return;
-  const stallingColor = room.chess.turn();
+  const stallingColor = room.turnClockFor || room.chess.turn();
   clearClock(room);
   if (typeof _onTimeoutResign === 'function') {
     _onTimeoutResign(room, io, stallingColor);

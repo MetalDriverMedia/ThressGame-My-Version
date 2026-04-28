@@ -682,6 +682,11 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
               });
             }
           }
+          // Switch the turn clock to the opponent so they can be timed out
+          // for stalling on their second-action choice (instead of penalizing
+          // the chooser whose turn it currently is).
+          turnClock.startClock(room, io, opponentColor);
+
           const secondPlayer = room.getPlayer(opponentColor);
           if (secondPlayer && secondPlayer.isBot) {
             setTimeout(() => botAutoMutatorResponse(room, io, gameManager), 1200 + Math.random() * 600);
@@ -715,6 +720,9 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         }
 
         io.to(room.roomCode).emit('mutatorActivated', activatedPayload2);
+
+        // Restart the clock for the chooser whose turn it actually is
+        turnClock.startClock(room, io);
 
         // Check if a king was destroyed by the mutator activation
         checkKingDestroyed(room, io, gameManager);
