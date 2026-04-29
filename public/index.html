@@ -261,6 +261,28 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- JOIN CONFIRMATION MODAL                                      -->
+    <!-- ============================================================ -->
+    <div
+      id="join-confirm-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="join-confirm-title"
+    >
+      <div class="modal-content join-confirm-content">
+        <h2 id="join-confirm-title">Join this room?</h2>
+        <p class="join-confirm-subtitle">Active rule pool for this match:</p>
+        <div id="join-confirm-rules" class="join-confirm-rules"></div>
+        <p id="join-confirm-flags" class="join-confirm-flags"></p>
+        <div class="join-confirm-buttons">
+          <button type="button" id="join-confirm-yes" class="btn-primary">Join</button>
+          <button type="button" id="join-confirm-no" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- GAME OVER MODAL                                              -->
     <!-- ============================================================ -->
     <div
@@ -349,7 +371,7 @@
         Concept by DougDoug
       </a>
       <span class="footer-separator">&bull;</span>
-      <a href="https://github.com/Ryukaki/ThressGame" target="_blank" rel="noopener" class="footer-version">v1.0.91</a>
+      <a href="https://github.com/Ryukaki/ThressGame" target="_blank" rel="noopener" class="footer-version">v1.0.92</a>
     </footer>
 
     <script src="config.js"></script>

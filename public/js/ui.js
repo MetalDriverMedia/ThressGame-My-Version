@@ -266,6 +266,64 @@ function _bindJoinBtn(btn) {
     const code = e.target.dataset.code;
     const name = elements.nameInput?.value.trim();
     if (!name) return;
+    let disabled = [];
+    try { disabled = JSON.parse(e.target.dataset.disabled || '[]'); } catch {}
+    const manualFlip = e.target.dataset.manualFlip === '1';
+    showJoinConfirm({ code, name, disabled, manualFlip });
+  });
+}
+
+// Build and display the join-confirmation modal listing the rule pool for the
+// target room. Confirms by emitting joinRoom; cancel just closes the modal.
+function showJoinConfirm({ code, name, disabled, manualFlip }) {
+  const modal = document.getElementById('join-confirm-modal');
+  const rulesContainer = document.getElementById('join-confirm-rules');
+  const flagsEl = document.getElementById('join-confirm-flags');
+  const yesBtn = document.getElementById('join-confirm-yes');
+  const noBtn = document.getElementById('join-confirm-no');
+  if (!modal || !rulesContainer || !yesBtn || !noBtn) return;
+
+  const allRules = state.allRules || [];
+  const disabledSet = new Set(disabled);
+  const enabled = allRules.filter(r => !disabledSet.has(r.id));
+  const totalEnabled = enabled.length;
+  const totalDisabled = disabled.length;
+
+  rulesContainer.innerHTML = '';
+  if (enabled.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'join-confirm-empty';
+    p.textContent = 'No mutators enabled -- standard chess.';
+    rulesContainer.appendChild(p);
+  } else {
+    enabled.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'join-confirm-rule';
+      item.innerHTML =
+        `<span class="join-confirm-rule-name">${escapeHtml(r.name)}</span>` +
+        `<span class="join-confirm-rule-desc">${escapeHtml(r.description || '')}</span>`;
+      rulesContainer.appendChild(item);
+    });
+  }
+  if (flagsEl) {
+    const parts = [`${totalEnabled} enabled`];
+    if (totalDisabled > 0) parts.push(`${totalDisabled} disabled by host`);
+    if (manualFlip) parts.push('Manual coin flip (honor system)');
+    flagsEl.textContent = parts.join(' • ');
+  }
+
+  // Replace listeners by cloning to avoid stacking on re-open
+  const yes = yesBtn.cloneNode(true);
+  const no = noBtn.cloneNode(true);
+  yesBtn.parentNode.replaceChild(yes, yesBtn);
+  noBtn.parentNode.replaceChild(no, noBtn);
+
+  no.addEventListener('click', () => {
+    modal.classList.add('hidden');
+  });
+
+  yes.addEventListener('click', () => {
+    modal.classList.add('hidden');
     const btns = [
       elements.createRoomBtn, elements.joinRoomBtn, elements.playBotBtn,
       elements.createRoomSubmit, elements.joinCodeSubmit,
@@ -274,6 +332,8 @@ function _bindJoinBtn(btn) {
     if (elements.nameInput) elements.nameInput.disabled = true;
     state.socket.emit('joinRoom', { name, roomCode: code, browserId: getOrCreateBrowserId() });
   });
+
+  modal.classList.remove('hidden');
 }
 
 function _bindWatchBtn(btn) {
@@ -302,15 +362,20 @@ function _diffWaitingRows(tbody, rooms) {
   rooms.forEach(room => {
     const code = room.roomCode;
     const openColor = room.openColor ? COLOR_NAMES[room.openColor] || room.openColor : 'Any';
+    const disabledJson = JSON.stringify(room.disabledMutators || []);
+    const manualFlip = room.manualCoinFlip ? '1' : '0';
 
     if (existingCodes.has(code)) {
-      // Update existing row cells in case data changed
       const row = existingCodes.get(code);
       const cells = row.querySelectorAll('td');
       cells[1].textContent = room.creatorName || 'Unknown';
       cells[2].textContent = openColor;
+      const btn = row.querySelector('.room-join-btn');
+      if (btn) {
+        btn.dataset.disabled = disabledJson;
+        btn.dataset.manualFlip = manualFlip;
+      }
     } else {
-      // Create new row
       const row = document.createElement('tr');
       row.className = 'room-row';
       row.dataset.code = code;
@@ -318,7 +383,7 @@ function _diffWaitingRows(tbody, rooms) {
         `<td class="room-code-cell">${escapeHtml(code)}</td>` +
         `<td>${escapeHtml(room.creatorName || 'Unknown')}</td>` +
         `<td>${openColor}</td>` +
-        `<td><button class="btn-primary btn-small room-join-btn" data-code="${escapeHtml(code)}">Join</button></td>`;
+        `<td><button class="btn-primary btn-small room-join-btn" data-code="${escapeHtml(code)}" data-disabled='${escapeHtml(disabledJson)}' data-manual-flip="${manualFlip}">Join</button></td>`;
       _bindJoinBtn(row.querySelector('.room-join-btn'));
       tbody.appendChild(row);
     }

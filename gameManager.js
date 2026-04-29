@@ -108,6 +108,8 @@ class GameRoom {
       isPrivate: this.isPrivate,
       createdAt: this.createdAt,
       spectatorCount: this.spectators.size,
+      disabledMutators: Array.from(this.disabledMutators || []),
+      manualCoinFlip: !!this.manualCoinFlip,
     };
   }
 
