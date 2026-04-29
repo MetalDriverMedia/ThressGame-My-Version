@@ -120,6 +120,7 @@ export function renderMutatorSettings(rules, categories) {
   if (manualFlipCb) {
     manualFlipCb.addEventListener('change', () => {
       state.manualCoinFlip = manualFlipCb.checked;
+      updateMutatorSummary();
     });
   }
 
@@ -133,12 +134,23 @@ export function renderMutatorSettings(rules, categories) {
 
 export function updateMutatorSummary() {
   const summary = document.getElementById('mutator-settings-summary');
-  if (!summary) return;
-  const enabled = state.allRules.length - state.disabledMutators.size;
-  if (enabled === state.allRules.length) {
-    summary.textContent = '(All enabled)';
-  } else {
-    summary.textContent = `(${enabled}/${state.allRules.length} enabled)`;
+  if (summary) {
+    const enabled = state.allRules.length - state.disabledMutators.size;
+    if (enabled === state.allRules.length) {
+      summary.textContent = '(All enabled)';
+    } else {
+      summary.textContent = `(${enabled}/${state.allRules.length} enabled)`;
+    }
+  }
+
+  // Heads-up notice on the create form: custom rule pool / manual flip won't count
+  const notice = document.getElementById('create-leaderboard-notice');
+  if (notice) {
+    const isModified = state.disabledMutators.size > 0 || state.manualCoinFlip;
+    notice.textContent = isModified
+      ? "Heads-up: this room won't count toward the leaderboard (custom rule pool)."
+      : '';
+    notice.classList.toggle('hidden', !isModified);
   }
 }
 

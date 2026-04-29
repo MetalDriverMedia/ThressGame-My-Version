@@ -1342,6 +1342,19 @@ button:not(:disabled):active {
 
 .join-confirm-notice.hidden { display: none; }
 
+.create-leaderboard-notice {
+  margin: 0 0 4px 0;
+  padding: 8px 12px;
+  background: rgba(220, 80, 80, 0.12);
+  color: #ff8a8a;
+  border: 1px solid rgba(220, 80, 80, 0.4);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.create-leaderboard-notice.hidden { display: none; }
+
 .join-confirm-buttons {
   display: flex;
   gap: 12px;
