@@ -79,7 +79,7 @@ function handleCreateRoom(io, socket, gameManager, data, broadcastRoomUpdate) {
   room.disabledMutators = new Set(data.disabledMutators || []);
   room.manualCoinFlip = data.manualCoinFlip || false;
 
-  const playerHash = generatePlayerHash(socket);
+  const playerHash = generatePlayerHash(socket, data.browserId);
   const color = assignColor(room, data.preferredColor || null);
   if (!color) {
     socket.emit('joinError', 'No available color. This should not happen.');
@@ -156,7 +156,7 @@ function handleJoinRoom(io, socket, gameManager, data, startGame, broadcastRoomU
     return;
   }
 
-  const playerHash = generatePlayerHash(socket);
+  const playerHash = generatePlayerHash(socket, data.browserId);
   // Reject joining your own room (same player hash already in the room)
   if ((room.white && room.white.playerHash === playerHash) ||
       (room.black && room.black.playerHash === playerHash)) {
@@ -228,7 +228,7 @@ function handleJoinBot(io, socket, gameManager, data, startGame, addBot) {
   room.disabledMutators = new Set(data.disabledMutators || []);
   room.manualCoinFlip = data.manualCoinFlip || false;
 
-  const playerHash = generatePlayerHash(socket);
+  const playerHash = generatePlayerHash(socket, data.browserId);
 
   // Player gets a random color
   const playerColor = Math.random() < 0.5 ? 'w' : 'b';

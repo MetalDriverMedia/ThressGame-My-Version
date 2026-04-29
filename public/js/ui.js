@@ -5,7 +5,7 @@
 import {
   state, elements, boardSquares, pieceImageCache,
   STORAGE_KEYS, COLOR_NAMES, PIECE_NAMES, PIECE_ICONS,
-  assetBasePath, escapeHtml,
+  assetBasePath, escapeHtml, getOrCreateBrowserId,
 } from './state.js';
 import { saveToStorage, removeFromStorage, clearSession, resetGameState } from './storage.js';
 
@@ -272,7 +272,7 @@ function _bindJoinBtn(btn) {
     ];
     btns.forEach(b => { if (b) b.disabled = true; });
     if (elements.nameInput) elements.nameInput.disabled = true;
-    state.socket.emit('joinRoom', { name, roomCode: code });
+    state.socket.emit('joinRoom', { name, roomCode: code, browserId: getOrCreateBrowserId() });
   });
 }
 

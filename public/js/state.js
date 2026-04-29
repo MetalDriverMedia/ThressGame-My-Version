@@ -15,7 +15,25 @@ export const assetBasePath = basePath === '/' ? '' : basePath;
 export const STORAGE_KEYS = {
   token: 'chess.playerToken',
   name: 'chess.playerName',
+  browserId: 'chess.browserId',
 };
+
+// Stable per-browser identity. Persists across page loads in localStorage so
+// the server can distinguish two players on the same network using different
+// browsers/devices, while still preventing self-join from the same browser.
+export function getOrCreateBrowserId() {
+  try {
+    let id = localStorage.getItem(STORAGE_KEYS.browserId);
+    if (!id) {
+      id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'b-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(STORAGE_KEYS.browserId, id);
+    }
+    return id;
+  } catch {
+    // localStorage unavailable -- fall back to per-session id
+    return 'session-' + Math.random().toString(36).slice(2);
+  }
+}
 
 export const COLOR_NAMES = { w: 'White', b: 'Black' };
 

@@ -2,7 +2,7 @@
 // EVENTS -- DOM event binding & landing logic
 // ============================================================================
 
-import { state, elements, STORAGE_KEYS } from './state.js';
+import { state, elements, STORAGE_KEYS, getOrCreateBrowserId } from './state.js';
 import { clearSession, removeFromStorage } from './storage.js';
 import {
   showLanding, hideModal, flashStatus,
@@ -171,6 +171,7 @@ export function bindLandingEvents() {
       setButtonsLoading(true);
       state.socket.emit('joinBot', {
         name,
+        browserId: getOrCreateBrowserId(),
         disabledMutators: [...state.disabledMutators],
         manualCoinFlip: state.manualCoinFlip,
       });
@@ -186,6 +187,7 @@ export function bindLandingEvents() {
       setButtonsLoading(true);
       state.socket.emit('createRoom', {
         name,
+        browserId: getOrCreateBrowserId(),
         preferredColor: color || undefined,
         isPrivate,
         disabledMutators: [...state.disabledMutators],
@@ -218,7 +220,7 @@ function submitJoinCode() {
     return;
   }
   setButtonsLoading(true);
-  state.socket.emit('joinRoom', { name, roomCode: code });
+  state.socket.emit('joinRoom', { name, roomCode: code, browserId: getOrCreateBrowserId() });
 }
 
 export function getPlayerName() {
