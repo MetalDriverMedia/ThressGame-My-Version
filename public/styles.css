@@ -1330,6 +1330,18 @@ button:not(:disabled):active {
   letter-spacing: 0.06em;
 }
 
+.join-confirm-notice {
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(220, 80, 80, 0.12);
+  color: #ff8a8a;
+  border: 1px solid rgba(220, 80, 80, 0.4);
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.join-confirm-notice.hidden { display: none; }
+
 .join-confirm-buttons {
   display: flex;
   gap: 12px;

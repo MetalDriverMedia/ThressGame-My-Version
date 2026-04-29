@@ -47,11 +47,16 @@ function emitGameEnded(io, room, reason, winner) {
   }
   io.to(room.roomCode).emit('gameEnded', payload);
 
-  // Update scoreboard (skip bot games and quiet resigns)
+  // Update scoreboard (skip bot games, quiet resigns, and custom-ruleset games)
   if (reason === 'quiet-resign') return;
   const w = room.white;
   const b = room.black;
   if (!w || !b || w.isBot || b.isBot) return;
+
+  // Only unmodified games (full mutator pool, auto coin flip) count toward
+  // the leaderboard. Custom rule pools could be tuned to favor an exploit.
+  const hasDisabledRules = room.disabledMutators && room.disabledMutators.size > 0;
+  if (hasDisabledRules || room.manualCoinFlip) return;
 
   if (winner) {
     const winPlayer = winner === 'w' ? w : b;

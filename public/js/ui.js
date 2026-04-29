@@ -312,6 +312,16 @@ function showJoinConfirm({ code, name, disabled, manualFlip }) {
     flagsEl.textContent = parts.join(' • ');
   }
 
+  // Heads-up: modified rule pool / manual flip won't count toward the leaderboard
+  const noticeEl = document.getElementById('join-confirm-notice');
+  if (noticeEl) {
+    const isModified = totalDisabled > 0 || manualFlip;
+    noticeEl.textContent = isModified
+      ? "Heads-up: this game won't count toward the leaderboard (custom rule pool)."
+      : '';
+    noticeEl.classList.toggle('hidden', !isModified);
+  }
+
   // Replace listeners by cloning to avoid stacking on re-open
   const yes = yesBtn.cloneNode(true);
   const no = noBtn.cloneNode(true);
