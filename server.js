@@ -72,6 +72,24 @@ turnClock.setTimeoutResignHandler((room, io, stallingColor) => {
 // Static files
 // URL rewriting middleware above strips BASE_PATH, so serve at '/'
 const STATIC_DIR = path.join(__dirname, 'public');
+
+// Serve index.html with the current package version injected as a cache-buster
+// on the main.js script tag and the footer version label, so browsers always
+// fetch the latest module bundle after a deploy without a manual hard-refresh.
+const fs = require('fs');
+const APP_VERSION = require('./package.json').version;
+const INDEX_PATH = path.join(STATIC_DIR, 'index.html');
+function serveIndex(_req, res) {
+  fs.readFile(INDEX_PATH, 'utf8', (err, html) => {
+    if (err) return res.status(500).send('index unavailable');
+    const stamped = html.replace(/main\.js\?v=[^"']+/g, `main.js?v=${APP_VERSION}`);
+    res.set('Cache-Control', 'no-store');
+    res.type('html').send(stamped);
+  });
+}
+app.get('/', serveIndex);
+app.get('/index.html', serveIndex);
+
 app.use(express.static(STATIC_DIR, { index: ['index.html'] }));
 
 /**
