@@ -11,6 +11,7 @@ const { isKingInCheck } = require('../mutators/checkDetector');
 const { COLUMNS, ROWS, fenToBoard, isSquareHardBlocked } = require('../mutators/boardUtils');
 const { checkKingDestroyed, checkMutatorDeadlock, checkParryDeadlock, triggerCoinFlip, checkCoinFlipSkipTurn } = require('../utils/gameLifecycle');
 const turnClock = require('../utils/turnClock');
+const { validateRoomIntegrity } = require('../utils/roomIntegrity');
 
 /**
  * Create mutator handler functions with injected dependencies.
@@ -65,6 +66,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       const parts = fen.split(' ');
       parts[1] = parts[1] === 'w' ? 'b' : 'w';
       room.chess.load(parts.join(' '), { skipValidation: true });
+      validateRoomIntegrity(room, 'mutatorHandler:parry-blocked-turn-skip');
 
       io.to(room.roomCode).emit('moveApplied', {
         from: null, to: null, san: '(blocked)', color: rps.attacker,
@@ -151,6 +153,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
             botPayload1.riskItRookFlip = room._riskItRookResult;
             delete room._riskItRookResult;
           }
+          validateRoomIntegrity(room, `mutatorHandler:bot-activate:${rule.id}`);
           io.to(room.roomCode).emit('mutatorActivated', botPayload1);
           checkKingDestroyed(room, io, gameManager);
           checkMutatorDeadlock(room, io, gameManager);
@@ -186,6 +189,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
             botPayload2.riskItRookFlip = room._riskItRookResult;
             delete room._riskItRookResult;
           }
+          validateRoomIntegrity(room, `mutatorHandler:bot-second-activate:${rule.id}`);
           io.to(room.roomCode).emit('mutatorActivated', botPayload2);
           checkKingDestroyed(room, io, gameManager);
           checkMutatorDeadlock(room, io, gameManager);
@@ -263,6 +267,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         if (pawnCount < 2) {
           ms.pendingChoice = null;
           io.to(room.roomCode).emit('mutatorSelected', { ruleId });
+          validateRoomIntegrity(room, `mutatorHandler:activate:${ruleId}`);
           io.to(room.roomCode).emit('mutatorActivated', {
             rule: { id: option.id, name: option.name, description: 'Skipped -- not enough pawns to sacrifice', duration: null },
             chooser: player.color,
@@ -291,6 +296,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         if (!hasBN.w || !hasBN.b) {
           ms.pendingChoice = null;
           io.to(room.roomCode).emit('mutatorSelected', { ruleId });
+          validateRoomIntegrity(room, `mutatorHandler:activate:${ruleId}`);
           io.to(room.roomCode).emit('mutatorActivated', {
             rule: { id: option.id, name: option.name, description: 'Skipped -- a player has no Bishops or Knights to swap with', duration: null },
             chooser: player.color,

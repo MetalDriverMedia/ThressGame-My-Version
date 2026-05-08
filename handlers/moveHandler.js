@@ -11,6 +11,7 @@ const { executeHook, getHooks, getWrapMoves, getCustomMoves, getBoardFromRoom, s
 const { isKingInCheck, wouldLeaveKingInCheck, getPseudoLegalDestinations } = require('../mutators/checkDetector');
 const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } = require('../mutators/boardUtils');
 const turnClock = require('../utils/turnClock');
+const { validateRoomIntegrity } = require('../utils/roomIntegrity');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -335,6 +336,7 @@ async function handleMove(io, socket, gameManager, data) {
       flags: capturedPiece ? 'c' : 'n',
       promotion: null,
     };
+    validateRoomIntegrity(room, 'moveHandler:custom-board-move');
   } else {
     // Attempt the move via chess.js (legal move validation is built in)
     try {
@@ -351,6 +353,7 @@ async function handleMove(io, socket, gameManager, data) {
       socket.emit('moveRejected', { error: 'Illegal move.' });
       return;
     }
+    validateRoomIntegrity(room, 'moveHandler:normal-move');
   }
 
   // --- Destination trap detection (mines, bottomless pits) ---
@@ -508,6 +511,7 @@ async function handleMove(io, socket, gameManager, data) {
         fen: room.chess.fen(),
         mutatorState: serializeMutatorState(ms),
       });
+      validateRoomIntegrity(room, `moveHandler:mutator-expired:${ar.rule.id}`);
     }
 
     // --- Coin Flip for All on Red ---------------------------------
@@ -626,6 +630,7 @@ async function handleMove(io, socket, gameManager, data) {
                 executeHook(randomRule.id, 'onActivate', room, nextTurn);
               }
 
+              validateRoomIntegrity(room, 'moveHandler:bot-mutator-activate');
               io.to(room.roomCode).emit('mutatorActivated', {
                 rule: { id: randomRule.id, name: randomRule.name, description: randomRule.description, duration: randomRule.duration },
                 chooser: nextTurn,
