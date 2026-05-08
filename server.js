@@ -135,11 +135,20 @@ const { botAutoMutatorResponse, registerSocketHandlers: registerMutatorHandlers 
 
 function createRateLimiter(maxPerWindow, windowMs) {
   const counts = new Map();
+  const lastWarnAt = new Map();
   setInterval(() => counts.clear(), windowMs);
   return function rateLimit(socket, next) {
     const count = (counts.get(socket.id) || 0) + 1;
     counts.set(socket.id, count);
-    if (count > maxPerWindow) return;
+    if (count > maxPerWindow) {
+      const now = Date.now();
+      const prev = lastWarnAt.get(socket.id) || 0;
+      if (now - prev > 1000) {
+        socket.emit('rateLimited', { retryAfterMs: windowMs });
+        lastWarnAt.set(socket.id, now);
+      }
+      return;
+    }
     next();
   };
 }
