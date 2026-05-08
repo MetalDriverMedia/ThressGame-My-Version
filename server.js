@@ -12,6 +12,8 @@ const { handleSpectateRoom, handleDisableSpectating, handleSpectatorDisconnect }
 const { createMutatorHandlers } = require('./handlers/mutatorHandler');
 const { addBotToRoom, scheduleBotMove, generateBotTarget } = require('./botManager');
 const { formatBasePath, buildSocketPath, registerConfigRoute } = require('./utils/config');
+const { flushSaves } = require('./utils/scoreboard');
+const { validateMovePayload, validateResumePayload } = require('./utils/socketValidation');
 const turnClock = require('./utils/turnClock');
 const { autoResignOnTimeout } = require('./utils/gameLifecycle');
 
@@ -133,18 +135,47 @@ const { botAutoMutatorResponse, registerSocketHandlers: registerMutatorHandlers 
 
 // --- Socket.IO Rate Limiting -------------------------------------------------
 
-function createRateLimiter(maxPerWindow, windowMs) {
-  const counts = new Map();
+function createRateLimiter(windowMs) {
+  const counts = new Map(); // key: socket.id:eventName -> count
   const lastWarnAt = new Map();
+  const EVENT_LIMITS = new Map([
+    // User-clicked room flow events should almost never be bursty.
+    ['createRoom', 8],
+    ['joinRoom', 10],
+    ['joinBot', 6],
+    ['listRooms', 30],
+    ['joinLobby', 20],
+
+    // Spectator / session
+    ['spectateRoom', 20],
+    ['disableSpectating', 8],
+    ['resumeSession', 10],
+
+    // Gameplay
+    ['move', 45],
+    ['resign', 6],
+    ['quietResign', 6],
+
+    // Mutator interactions
+    ['selectMutator', 20],
+    ['mutatorActionResponse', 20],
+    ['rpsChoice', 20],
+    ['coinFlipChoice', 20],
+    ['coinFlipStart', 20],
+    ['riskItRookFlipChoice', 20],
+  ]);
+
   setInterval(() => counts.clear(), windowMs);
-  return function rateLimit(socket, next) {
-    const count = (counts.get(socket.id) || 0) + 1;
-    counts.set(socket.id, count);
+  return function rateLimit(socket, eventName, next) {
+    const maxPerWindow = EVENT_LIMITS.get(eventName) || 60;
+    const key = `${socket.id}:${eventName}`;
+    const count = (counts.get(key) || 0) + 1;
+    counts.set(key, count);
     if (count > maxPerWindow) {
       const now = Date.now();
       const prev = lastWarnAt.get(socket.id) || 0;
       if (now - prev > 1000) {
-        socket.emit('rateLimited', { retryAfterMs: windowMs });
+        socket.emit('rateLimited', { retryAfterMs: windowMs, event: eventName });
         lastWarnAt.set(socket.id, now);
       }
       return;
@@ -153,7 +184,7 @@ function createRateLimiter(maxPerWindow, windowMs) {
   };
 }
 
-const socketRateLimit = createRateLimiter(60, 10_000); // 60 events per 10s
+const socketRateLimit = createRateLimiter(10_000);
 
 // --- Socket.IO Connection Handler --------------------------------------------
 
@@ -162,7 +193,10 @@ io.on('connection', (socket) => {
   socket.join('lobby');
 
   // Rate-limit all incoming events
-  socket.use((event, next) => socketRateLimit(socket, next));
+  socket.use((packet, next) => {
+    const eventName = Array.isArray(packet) ? packet[0] : 'unknown';
+    socketRateLimit(socket, eventName, next);
+  });
 
   // Room management
   socket.on('createRoom', (data) => handleCreateRoom(io, socket, gameManager, data, broadcastRoomUpdate));
@@ -177,6 +211,11 @@ io.on('connection', (socket) => {
 
   // Game actions
   socket.on('move', (data) => {
+    const valid = validateMovePayload(data);
+    if (!valid.ok) {
+      socket.emit('moveRejected', { error: valid.error });
+      return;
+    }
     handleMove(io, socket, gameManager, data);
     // After human move, schedule bot response if opponent is bot
     const room = gameManager.getRoomForSocket(socket.id);
@@ -195,7 +234,14 @@ io.on('connection', (socket) => {
   registerMutatorHandlers(socket, io, gameManager);
 
   // Session
-  socket.on('resumeSession', (data) => handleResume(io, socket, gameManager, data));
+  socket.on('resumeSession', (data) => {
+    const valid = validateResumePayload(data);
+    if (!valid.ok) {
+      socket.emit('resumeRejected', valid.error);
+      return;
+    }
+    handleResume(io, socket, gameManager, data);
+  });
 
   // Disconnect
   socket.on('disconnect', () => {
@@ -207,6 +253,11 @@ io.on('connection', (socket) => {
 // --- Periodic Cleanup --------------------------------------------------------
 
 setInterval(() => gameManager.cleanupOldRooms(), 5 * 60 * 1000);
+
+// Flush pending scoreboard writes on process shutdown lifecycle.
+process.once('beforeExit', flushSaves);
+process.once('SIGINT', flushSaves);
+process.once('SIGTERM', flushSaves);
 
 // --- Initialization ----------------------------------------------------------
 
