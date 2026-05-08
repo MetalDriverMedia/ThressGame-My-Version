@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "lint": "node --check server.js gameManager.js gameController.js botManager.js handlers/*.js mutators/*.js routes/*.js utils/*.js"
   },
   "keywords": ["chess", "multiplayer", "socket.io", "mutators"],
   "author": "KaydFun",
