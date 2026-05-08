@@ -1,11 +1,21 @@
 node_modules/
 *.log
 .env
+.env.local
+.env.*.local
+
 data/
-tests/
 tmp/
 backups/
+
 *.psd
+
 .serena/
 .superpowers/
 test_node_modules/
+
+# Usually keep tests in GitHub so Codex can see them
+# tests/
+
+.DS_Store
+Thumbs.db
