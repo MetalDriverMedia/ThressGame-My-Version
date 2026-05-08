@@ -134,47 +134,18 @@ const { botAutoMutatorResponse, registerSocketHandlers: registerMutatorHandlers 
 
 // --- Socket.IO Rate Limiting -------------------------------------------------
 
-function createRateLimiter(windowMs) {
-  const counts = new Map(); // key: socket.id:eventName -> count
+function createRateLimiter(maxPerWindow, windowMs) {
+  const counts = new Map();
   const lastWarnAt = new Map();
-  const EVENT_LIMITS = new Map([
-    // User-clicked room flow events should almost never be bursty.
-    ['createRoom', 8],
-    ['joinRoom', 10],
-    ['joinBot', 6],
-    ['listRooms', 30],
-    ['joinLobby', 20],
-
-    // Spectator / session
-    ['spectateRoom', 20],
-    ['disableSpectating', 8],
-    ['resumeSession', 10],
-
-    // Gameplay
-    ['move', 45],
-    ['resign', 6],
-    ['quietResign', 6],
-
-    // Mutator interactions
-    ['selectMutator', 20],
-    ['mutatorActionResponse', 20],
-    ['rpsChoice', 20],
-    ['coinFlipChoice', 20],
-    ['coinFlipStart', 20],
-    ['riskItRookFlipChoice', 20],
-  ]);
-
   setInterval(() => counts.clear(), windowMs);
-  return function rateLimit(socket, eventName, next) {
-    const maxPerWindow = EVENT_LIMITS.get(eventName) || 60;
-    const key = `${socket.id}:${eventName}`;
-    const count = (counts.get(key) || 0) + 1;
-    counts.set(key, count);
+  return function rateLimit(socket, next) {
+    const count = (counts.get(socket.id) || 0) + 1;
+    counts.set(socket.id, count);
     if (count > maxPerWindow) {
       const now = Date.now();
       const prev = lastWarnAt.get(socket.id) || 0;
       if (now - prev > 1000) {
-        socket.emit('rateLimited', { retryAfterMs: windowMs, event: eventName });
+        socket.emit('rateLimited', { retryAfterMs: windowMs });
         lastWarnAt.set(socket.id, now);
       }
       return;

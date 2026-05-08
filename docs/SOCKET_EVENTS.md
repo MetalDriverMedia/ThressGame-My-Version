@@ -17,11 +17,10 @@ This document is the canonical reference for client/server Socket.IO events.
 - `resumeSession` `{ token }`
 - mutator flow:
   - `selectMutator` `{ ruleId }`
-  - `mutatorActionResponse` `{ ruleId, target, secondTarget?, manualResolve? }`
+  - `mutatorActionResponse` `{ ruleId, target? ... }`
   - `rpsChoice` `{ choice }`
   - `coinFlipChoice` `{ result }`
   - `coinFlipStart` `{}`
-  - `riskItRookFlipChoice` `{ choice }`
 
 ## Server -> Client
 
@@ -43,7 +42,7 @@ This document is the canonical reference for client/server Socket.IO events.
   - `coinFlip`, `coinFlipPrompt`, `coinFlipResult`, `coinFlipStart`
   - `riskItRookFlipPrompt`, `riskItRookFlipResult`
 - throttling:
-  - `rateLimited` `{ retryAfterMs, event? }`
+  - `rateLimited` `{ retryAfterMs }`
 
 ## Notes
 
