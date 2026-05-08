@@ -71,6 +71,14 @@ export function onConnectError() {
   flashStatus('Connection error. Retrying...', 4000);
 }
 
+export function onRateLimited(payload) {
+  const retryMs = Number(payload?.retryAfterMs) || 10000;
+  const retrySec = Math.max(1, Math.round(retryMs / 1000));
+  const evt = typeof payload?.event === 'string' ? payload.event : null;
+  const suffix = evt ? ` (${evt})` : '';
+  flashStatus(`Too many actions too quickly${suffix}. Please wait ~${retrySec}s.`, 2500);
+}
+
 // ============================================================================
 // GAME LIFECYCLE
 // ============================================================================
