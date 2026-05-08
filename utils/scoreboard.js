@@ -132,5 +132,14 @@ function prune() {
 
 // Load on startup
 load();
+process.on('beforeExit', flushSaves);
+process.on('SIGINT', () => {
+  flushSaves();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  flushSaves();
+  process.exit(0);
+});
 
 module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, getGoldLead, prune, flushSaves };

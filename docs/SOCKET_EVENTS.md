@@ -22,6 +22,10 @@ This document is the canonical reference for client/server Socket.IO events.
   - `coinFlipChoice` `{ result }`
   - `coinFlipStart` `{}`
   - `riskItRookFlipChoice` `{ choice }`
+  - `mutatorActionResponse` `{ ruleId, target? ... }`
+  - `rpsChoice` `{ choice }`
+  - `coinFlipChoice` `{ result }`
+  - `coinFlipStart` `{}`
 
 ## Server -> Client
 
