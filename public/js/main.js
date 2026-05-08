@@ -41,8 +41,7 @@ setOverlayRenderer(renderBoardOverlays);
 function connectSocket() {
   const opts = {
     path: socketPath,
-    transports: ['websocket'],   // Skip polling->websocket upgrade cycle
-    upgrade: false,
+    transports: ['websocket', 'polling'],
   };
   state.socket = io('/', opts);
 
