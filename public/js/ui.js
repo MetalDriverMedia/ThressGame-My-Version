@@ -5,7 +5,7 @@
 import {
   state, elements, boardSquares, pieceImageCache,
   STORAGE_KEYS, COLOR_NAMES, PIECE_NAMES, PIECE_ICONS,
-  assetBasePath, escapeHtml, getOrCreateBrowserId,
+  assetBasePath, apiPath, escapeHtml, getOrCreateBrowserId,
 } from './state.js';
 import { saveToStorage, removeFromStorage, clearSession, resetGameState } from './storage.js';
 
@@ -738,7 +738,7 @@ export async function fetchMotd() {
   if (!panel || !content) return;
 
   try {
-    const res = await fetch('/api/motd');
+    const res = await fetch(apiPath('/api/motd'));
     const data = await res.json();
     const text = (data.text || '').trim();
     if (text) {
@@ -758,7 +758,7 @@ export async function fetchScoreboard() {
   if (!container) return;
 
   try {
-    const res = await fetch('/api/scoreboard');
+    const res = await fetch(apiPath('/api/scoreboard'));
     const data = await res.json();
     _diffScoreboard(container, data.players || []);
   } catch (err) {

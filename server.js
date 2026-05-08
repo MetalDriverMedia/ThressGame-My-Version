@@ -84,7 +84,10 @@ const INDEX_PATH = path.join(STATIC_DIR, 'index.html');
 function serveIndex(_req, res) {
   fs.readFile(INDEX_PATH, 'utf8', (err, html) => {
     if (err) return res.status(500).send('index unavailable');
-    const stamped = html.replace(/main\.js\?v=[^"']+/g, `main.js?v=${APP_VERSION}`);
+    const stamped = html
+      .replace(/main\.js\?v=[^"']+/g, `main.js?v=${APP_VERSION}`)
+      .replace(/styles\.css\?v=[^"']+/g, `styles.css?v=${APP_VERSION}`)
+      .replace(/class="footer-version">v[^<]+</g, `class="footer-version">v${APP_VERSION}<`);
     res.set('Cache-Control', 'no-store');
     res.type('html').send(stamped);
   });

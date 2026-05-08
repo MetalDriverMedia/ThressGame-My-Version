@@ -12,6 +12,11 @@ const rawSocketPath =
 export const socketPath = rawSocketPath || '/socket.io';
 export const assetBasePath = basePath === '/' ? '' : basePath;
 
+export function apiPath(endpoint) {
+  const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${assetBasePath}${normalized}`;
+}
+
 export const STORAGE_KEYS = {
   token: 'chess.playerToken',
   name: 'chess.playerName',
