@@ -80,6 +80,54 @@ main {
   display: none !important;
 }
 
+/* Fullscreen mode */
+body.fullscreen {
+  padding: 0;
+  background: var(--bg-deep);
+}
+
+body.fullscreen main {
+  zoom: 1;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.fullscreen .game-section {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  gap: 0;
+}
+
+body.fullscreen .board-area {
+  flex: 1;
+  height: 100%;
+  justify-content: center;
+}
+
+body.fullscreen .board-container {
+  width: min(90vh, 90vw);
+  height: min(90vh, 90vw);
+}
+
+body.fullscreen .choice-column {
+  width: 300px;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+body.fullscreen .info-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
 /* ============================================================================
    TYPOGRAPHY
    ============================================================================ */
@@ -867,7 +915,7 @@ button:not(:disabled):active {
 
 .board-container {
   position: relative;
-  width: 420px;
+  width: 720px;
 }
 
 .board {
@@ -956,7 +1004,7 @@ button:not(:disabled):active {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  max-width: 420px;
+  max-width: 720px;
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 0.9rem;
@@ -2353,12 +2401,12 @@ button:not(:disabled):active {
   align-items: flex-start;
   justify-content: center;
   gap: 20px;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
 .game-section .board-area {
-  flex: 0 0 420px;
+  flex: 0 0 720px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2372,8 +2420,8 @@ button:not(:disabled):active {
   width: 260px;
   min-width: 220px;
   flex-shrink: 0;
-  /* Match the board-area height: opponent-bar (~38px) + 8px gap + board (440px) + 8px gap + player-bar (~38px) */
-  height: 532px;
+  /* Match the board-area height: opponent-bar (~38px) + 8px gap + board (720px) + 8px gap + player-bar (~38px) */
+  height: 812px;
 }
 
 /* === MUTATOR CHOICE PANEL (right of board) === */
@@ -2612,14 +2660,14 @@ body.variant-b .variant-b-only { display: flex; }
   .game-section .board-area {
     flex: 0 0 auto;
     width: 90vw;
-    max-width: 420px;
+    max-width: 720px;
   }
   .board-container {
     width: 100%;
   }
   .choice-column {
     width: 90vw;
-    max-width: 420px;
+    max-width: 720px;
   }
   .mutator-choice-panel {
     min-height: 200px;

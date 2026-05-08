@@ -372,6 +372,29 @@ export function bindGameEvents() {
       elements.sidebarCodeToggle.textContent = hidden ? 'Hide' : 'Show';
     });
   }
+
+  // Fullscreen toggle
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', () => {
+      document.body.classList.toggle('fullscreen');
+      const isFullscreen = document.body.classList.contains('fullscreen');
+      fullscreenBtn.textContent = isFullscreen ? '⛶' : '⛶';
+      fullscreenBtn.title = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+    });
+  }
+
+  // Exit fullscreen on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
+      document.body.classList.remove('fullscreen');
+      const fullscreenBtn = document.getElementById('fullscreen-btn');
+      if (fullscreenBtn) {
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.title = 'Enter fullscreen';
+      }
+    }
+  });
 }
 
 // ============================================================================

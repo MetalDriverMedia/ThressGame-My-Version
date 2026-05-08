@@ -178,6 +178,7 @@ export const elements = {
   resignButton: document.getElementById('resign-button'),
   sidebarRoomCode: document.getElementById('sidebar-room-code'),
   sidebarCodeToggle: document.getElementById('sidebar-code-toggle'),
+  fullscreenBtn: document.getElementById('fullscreen-btn'),
   turnIndicator: document.getElementById('turn-indicator'),
   turnText: document.getElementById('turn-text'),
   titleCard: document.getElementById('title-card'),
