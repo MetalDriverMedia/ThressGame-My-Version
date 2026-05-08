@@ -25,6 +25,7 @@ import {
   onRiskItRookFlipPrompt, onRiskItRookFlipResult,
   onSpectateSuccess, onSpectateKicked, onSpectateError, onSpectatorCount,
   onTurnClockUpdate, onQuietResignAvailable, onQuietResignRevoked,
+  onRateLimited,
 } from './socketHandlers.js';
 
 // --- Wire cross-module renderers ----------------------------------
@@ -75,6 +76,7 @@ function connectSocket() {
   state.socket.on('turnClockUpdate', onTurnClockUpdate);
   state.socket.on('quietResignAvailable', onQuietResignAvailable);
   state.socket.on('quietResignRevoked', onQuietResignRevoked);
+  state.socket.on('rateLimited', onRateLimited);
 
   // Mutator events
   state.socket.on('mutatorChoice', onMutatorChoice);

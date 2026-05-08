@@ -3,9 +3,12 @@ const path = require('path');
 
 const SCOREBOARD_PATH = path.join(__dirname, '..', 'data', 'scoreboard.json');
 const MAX_ENTRIES = 5000;
+const SAVE_DEBOUNCE_MS = 500;
 
 // In-memory scoreboard: { [playerHash]: { name, score, wins, losses, draws, lastPlayed } }
 let scores = {};
+let saveTimer = null;
+let pendingSave = false;
 
 function load() {
   try {
@@ -18,14 +21,34 @@ function load() {
   }
 }
 
-function save() {
+function saveNow() {
   try {
     const dir = path.dirname(SCOREBOARD_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(SCOREBOARD_PATH, JSON.stringify(scores, null, 2));
   } catch (err) {
     console.warn('[scoreboard] Failed to save:', err.message);
+  } finally {
+    pendingSave = false;
   }
+}
+
+function save() {
+  pendingSave = true;
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    if (!pendingSave) return;
+    saveNow();
+  }, SAVE_DEBOUNCE_MS);
+}
+
+function flushSaves() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  if (pendingSave) saveNow();
 }
 
 function ensureEntry(hash, name) {
@@ -109,5 +132,14 @@ function prune() {
 
 // Load on startup
 load();
+process.on('beforeExit', flushSaves);
+process.on('SIGINT', () => {
+  flushSaves();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  flushSaves();
+  process.exit(0);
+});
 
-module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, getGoldLead, prune };
+module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, getGoldLead, prune, flushSaves };
