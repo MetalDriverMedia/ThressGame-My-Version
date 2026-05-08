@@ -2,7 +2,7 @@
 // EVENTS -- DOM event binding & landing logic
 // ============================================================================
 
-import { state, elements, STORAGE_KEYS, getOrCreateBrowserId } from './state.js';
+import { state, elements, STORAGE_KEYS, getOrCreateBrowserId, apiPath } from './state.js';
 import { clearSession, removeFromStorage } from './storage.js';
 import {
   showLanding, hideModal, flashStatus,
@@ -16,7 +16,7 @@ import { cancelPromotion } from './board.js';
 
 export async function initMutatorSettings() {
   try {
-    const res = await fetch('/api/rules');
+    const res = await fetch(apiPath('/api/rules'));
     const data = await res.json();
     state.allRules = data.rules;
     renderMutatorSettings(data.rules, data.categories);

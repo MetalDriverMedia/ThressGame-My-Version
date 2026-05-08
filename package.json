@@ -1,15 +1,21 @@
 {
-  "name": "chess",
+  "name": "thress-game",
   "version": "1.0.95",
-  "description": "1v1 online chess with room codes and mutators",
+  "description": "Online three-rule chess with room codes, mutators, bots, and spectating",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test",
-    "lint": "node --check server.js gameManager.js gameController.js botManager.js handlers/*.js mutators/*.js routes/*.js utils/*.js"
+    "lint": "npm run check",
+    "check": "node --check server.js gameManager.js gameController.js botManager.js handlers/*.js mutators/*.js routes/*.js utils/*.js public/js/*.js"
   },
-  "keywords": ["chess", "multiplayer", "socket.io", "mutators"],
+  "keywords": [
+    "chess",
+    "multiplayer",
+    "socket.io",
+    "mutators"
+  ],
   "author": "KaydFun",
   "license": "ISC",
   "type": "commonjs",
