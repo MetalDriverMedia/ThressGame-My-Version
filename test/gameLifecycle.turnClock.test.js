@@ -58,10 +58,21 @@ function createActiveHumanRoom(roomCode = 'TCLK1') {
 function withMockedDateNow(valueOrFn, fn) {
   const originalDateNow = Date.now;
   Date.now = typeof valueOrFn === 'function' ? valueOrFn : () => valueOrFn;
-  try {
-    return fn();
-  } finally {
+
+  const restore = () => {
     Date.now = originalDateNow;
+  };
+
+  try {
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      return result.finally(restore);
+    }
+    restore();
+    return result;
+  } catch (err) {
+    restore();
+    throw err;
   }
 }
 
@@ -83,15 +94,26 @@ function withCapturedTimers(fn) {
     scheduled.push(timer);
     return timer;
   };
+
   global.clearTimeout = (timer) => {
     cleared.push(timer);
   };
 
-  try {
-    return fn({ scheduled, cleared });
-  } finally {
+  const restore = () => {
     global.setTimeout = originalSetTimeout;
     global.clearTimeout = originalClearTimeout;
+  };
+
+  try {
+    const result = fn({ scheduled, cleared });
+    if (result && typeof result.then === 'function') {
+      return result.finally(restore);
+    }
+    restore();
+    return result;
+  } catch (err) {
+    restore();
+    throw err;
   }
 }
 
