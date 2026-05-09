@@ -411,10 +411,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       // Check if a king was destroyed by the instant mutator activation
       checkKingDestroyed(room, io, gameManager);
 
-      // Check if mutator restrictions leave the current player with no legal moves
-      checkMutatorDeadlock(room, io, gameManager);
-
-      // If All on Red just activated, trigger immediate coin flip
+      // If All on Red just activated, trigger immediate coin flip before deadlock checks
+      // so legal-move filtering sees an explicit pending/resulted flip state.
       if (option.id === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
         const nextTurn = room.chess.turn();
         triggerCoinFlip(room, io, nextTurn);
@@ -422,6 +420,9 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
           checkCoinFlipSkipTurn(room, io, nextTurn);
         }
       }
+
+      // Check if mutator restrictions leave the current player with no legal moves
+      checkMutatorDeadlock(room, io, gameManager);
 
       // Risk it Rook manual mode: prompt players for coin flips
       if (option.id === 'risk_it_rook' && room._riskItRookPending) {
