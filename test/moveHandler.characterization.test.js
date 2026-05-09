@@ -3,60 +3,14 @@ const assert = require('node:assert/strict');
 
 const { handleMove } = require('../handlers/moveHandler');
 const { createMutatorHandlers } = require('../handlers/mutatorHandler');
-const { GameManager, GameRoom } = require('../gameManager');
-
-function createIoRecorder() {
-  const roomEvents = [];
-  return {
-    roomEvents,
-    io: {
-      to(roomCode) {
-        return {
-          emit(name, payload) {
-            roomEvents.push({ roomCode, name, payload });
-          },
-        };
-      },
-      sockets: { sockets: new Map() },
-    },
-  };
-}
-
-function createSocket(id = 'sock-w') {
-  const emitted = [];
-  return {
-    id,
-    emitted,
-    emit(name, payload) {
-      emitted.push({ name, payload });
-    },
-  };
-}
-
-
-function createRegisteredSocket(id = 'sock-w') {
-  const handlers = new Map();
-  const emitted = [];
-  return {
-    id,
-    emitted,
-    on(name, fn) { handlers.set(name, fn); },
-    emit(name, payload) { emitted.push({ name, payload }); },
-    to() { return { emit() {} }; },
-    trigger(name, payload) {
-      const fn = handlers.get(name);
-      if (fn) fn(payload);
-    },
-  };
-}
-
-function createActiveRoomWithPlayers(roomCode = 'MVT01') {
-  const room = new GameRoom(roomCode);
-  room.addPlayer({ name: 'White', color: 'w', socketId: 'sock-w', isBot: false });
-  room.addPlayer({ name: 'Black', color: 'b', socketId: 'sock-b', isBot: true });
-  room.startGame();
-  return room;
-}
+const { GameManager } = require('../gameManager');
+const {
+  createIoRecorder,
+  createSocket,
+  createRegisteredSocket,
+  createActiveRoomWithPlayers,
+  createParryCaptureSetup,
+} = require('./helpers/moveHandlerTestHelpers');
 
 test('handleMove accepts a normal legal move and emits moveApplied', async () => {
   const gameManager = new GameManager();
@@ -526,10 +480,7 @@ test('handleMove applies pseudo-legal board move through fake-check fallback whe
 
 test('parry RPS resolution: attacker win proceeds capture via socket rpsChoice handlers', async () => {
   const gameManager = new GameManager();
-  const room = createActiveRoomWithPlayers('MVT32');
-  room.black = { name: 'Black', color: 'b', socketId: 'sock-b', isBot: false };
-  room.chess.load('4k3/8/8/8/8/8/3p4/3QK3 w - - 0 1');
-  room.mutatorState.activeRules.push({ rule: { id: 'parry' } });
+  const room = createParryCaptureSetup('MVT32');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -576,10 +527,7 @@ test('parry RPS resolution: attacker win proceeds capture via socket rpsChoice h
 
 test('parry RPS resolution: tie also proceeds capture', async () => {
   const gameManager = new GameManager();
-  const room = createActiveRoomWithPlayers('MVT36');
-  room.black = { name: 'Black', color: 'b', socketId: 'sock-b', isBot: false };
-  room.chess.load('4k3/8/8/8/8/8/3p4/3QK3 w - - 0 1');
-  room.mutatorState.activeRules.push({ rule: { id: 'parry' } });
+  const room = createParryCaptureSetup('MVT36');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -607,10 +555,7 @@ test('parry RPS resolution: tie also proceeds capture', async () => {
 });
 test('parry RPS resolution: defender win blocks capture and skips attacker turn', async () => {
   const gameManager = new GameManager();
-  const room = createActiveRoomWithPlayers('MVT33');
-  room.black = { name: 'Black', color: 'b', socketId: 'sock-b', isBot: false };
-  room.chess.load('4k3/8/8/8/8/8/3p4/3QK3 w - - 0 1');
-  room.mutatorState.activeRules.push({ rule: { id: 'parry' } });
+  const room = createParryCaptureSetup('MVT33');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -646,10 +591,7 @@ test('parry RPS resolution: defender win blocks capture and skips attacker turn'
 
 test('parry RPS resolution: single valid choice does not resolve', async () => {
   const gameManager = new GameManager();
-  const room = createActiveRoomWithPlayers('MVT34');
-  room.black = { name: 'Black', color: 'b', socketId: 'sock-b', isBot: false };
-  room.chess.load('4k3/8/8/8/8/8/3p4/3QK3 w - - 0 1');
-  room.mutatorState.activeRules.push({ rule: { id: 'parry' } });
+  const room = createParryCaptureSetup('MVT34');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -672,10 +614,7 @@ test('parry RPS resolution: single valid choice does not resolve', async () => {
 
 test('parry RPS resolution: invalid or unrelated rpsChoice is ignored', async () => {
   const gameManager = new GameManager();
-  const room = createActiveRoomWithPlayers('MVT35');
-  room.black = { name: 'Black', color: 'b', socketId: 'sock-b', isBot: false };
-  room.chess.load('4k3/8/8/8/8/8/3p4/3QK3 w - - 0 1');
-  room.mutatorState.activeRules.push({ rule: { id: 'parry' } });
+  const room = createParryCaptureSetup('MVT35');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
