@@ -16,10 +16,12 @@ const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
  * @param {number} [delayMs] - Delay before deletion (default: 5 minutes)
  */
 function scheduleRoomDeletion(gameManager, roomCode, delayMs = ROOM_CLEANUP_DELAY_MS) {
-  setTimeout(() => {
+  const timer = setTimeout(() => {
     gameManager.deleteRoom(roomCode);
     console.log(`[gameLifecycle] Room ${roomCode} deleted after scheduled cleanup`);
   }, delayMs);
+  // Cleanup timers should not keep Node alive when tests finish.
+  if (typeof timer.unref === 'function') timer.unref();
 }
 
 /**
