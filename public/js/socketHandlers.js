@@ -108,6 +108,10 @@ export function onJoinSuccess(payload) {
   state.isGameActive = payload.status === 'active';
   state.moveHistory = payload.moveHistory || [];
   state.capturedPieces = payload.capturedPieces || { w: [], b: [] };
+  state.checkState = null;
+  state.selectedSquare = null;
+  state.legalMoves = [];
+  state.lastMove = null;
 
   if (state.isGameActive) {
     showGame();
@@ -138,6 +142,7 @@ export function onGameStarted(payload) {
   state.selectedSquare = null;
   state.legalMoves = [];
   state.lastMove = null;
+  state.checkState = null;
   state.moveHistory = [];
   state.capturedPieces = { w: [], b: [] };
 
@@ -175,7 +180,7 @@ export async function onMoveApplied(payload) {
 
   if (payload.white) state.whitePlayer = payload.white;
   if (payload.black) state.blackPlayer = payload.black;
-  if (payload.checkState) state.checkState = payload.checkState;
+  state.checkState = payload.checkState || null;
 
   state.selectedSquare = null;
   state.legalMoves = [];
@@ -242,6 +247,7 @@ export function onGameEnded(payload) {
 
   state.selectedSquare = null;
   state.legalMoves = [];
+  state.checkState = null;
 
   renderBoard();
   updateTurnIndicator();
@@ -286,6 +292,7 @@ export function onResumeSuccess(payload) {
   state.isGameActive = payload.status === 'active';
   state.moveHistory = payload.moveHistory || [];
   state.capturedPieces = payload.capturedPieces || { w: [], b: [] };
+  state.checkState = payload.checkState || null;
 
   if (state.isGameActive) {
     showGame();
@@ -550,6 +557,7 @@ export function onSpectateSuccess(payload) {
 
   state.moveHistory = payload.moveHistory || [];
   state.capturedPieces = payload.capturedPieces || { w: [], b: [] };
+  state.checkState = payload.checkState || null;
 
   if (payload.mutatorState) {
     state.mutatorState = payload.mutatorState;
