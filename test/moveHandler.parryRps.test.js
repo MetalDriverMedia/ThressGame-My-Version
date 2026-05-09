@@ -4,15 +4,29 @@ const assert = require('node:assert/strict');
 const { handleMove } = require('../handlers/moveHandler');
 const { createMutatorHandlers } = require('../handlers/mutatorHandler');
 const { GameManager } = require('../gameManager');
+const turnClock = require('../utils/turnClock');
 const {
   createIoRecorder,
   createRegisteredSocket,
   createParryCaptureSetup,
 } = require('./helpers/moveHandlerTestHelpers');
 
+
+const roomsToCleanup = new Set();
+
+function createTrackedParryRoom(roomCode) {
+  const room = createParryCaptureSetup(roomCode);
+  roomsToCleanup.add(room);
+  return room;
+}
+
+test.afterEach(() => {
+  for (const room of roomsToCleanup) turnClock.clearClock(room);
+  roomsToCleanup.clear();
+});
 test('parry RPS resolution: attacker win proceeds capture via socket rpsChoice handlers', async () => {
   const gameManager = new GameManager();
-  const room = createParryCaptureSetup('MVT32');
+  const room = createTrackedParryRoom('MVT32');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -57,7 +71,7 @@ test('parry RPS resolution: attacker win proceeds capture via socket rpsChoice h
 
 test('parry RPS resolution: tie also proceeds capture', async () => {
   const gameManager = new GameManager();
-  const room = createParryCaptureSetup('MVT36');
+  const room = createTrackedParryRoom('MVT36');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -86,7 +100,7 @@ test('parry RPS resolution: tie also proceeds capture', async () => {
 
 test('parry RPS resolution: defender win blocks capture and skips attacker turn', async () => {
   const gameManager = new GameManager();
-  const room = createParryCaptureSetup('MVT33');
+  const room = createTrackedParryRoom('MVT33');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -122,7 +136,7 @@ test('parry RPS resolution: defender win blocks capture and skips attacker turn'
 
 test('parry RPS resolution: single valid choice does not resolve', async () => {
   const gameManager = new GameManager();
-  const room = createParryCaptureSetup('MVT34');
+  const room = createTrackedParryRoom('MVT34');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -145,7 +159,7 @@ test('parry RPS resolution: single valid choice does not resolve', async () => {
 
 test('parry RPS resolution: invalid or unrelated rpsChoice is ignored', async () => {
   const gameManager = new GameManager();
-  const room = createParryCaptureSetup('MVT35');
+  const room = createTrackedParryRoom('MVT35');
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
