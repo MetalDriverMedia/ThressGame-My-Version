@@ -152,13 +152,18 @@ test('GameManager room creation/deletion/stats/cleanup lifecycle', () => {
   manager.setTokenRoom(p1.token, r1.roomCode); manager.setTokenRoom(p2.token, r1.roomCode);
 
   const oldNow = Date.now;
-  Date.now = () => 1_000_000;
-  r1.status = 'ended'; r1.endedAt = 1_000_000 - (6 * 60 * 1000);
-  r2.status = 'waiting';
-  const r3 = manager.createRoom(false); r3.status = 'active';
-  const r4 = manager.createRoom(false); r4.status = 'ended'; r4.endedAt = 1_000_000 - (2 * 60 * 1000);
-  manager.cleanupOldRooms();
-  Date.now = oldNow;
+  let r3;
+  let r4;
+  try {
+    Date.now = () => 1_000_000;
+    r1.status = 'ended'; r1.endedAt = 1_000_000 - (6 * 60 * 1000);
+    r2.status = 'waiting';
+    r3 = manager.createRoom(false); r3.status = 'active';
+    r4 = manager.createRoom(false); r4.status = 'ended'; r4.endedAt = 1_000_000 - (2 * 60 * 1000);
+    manager.cleanupOldRooms();
+  } finally {
+    Date.now = oldNow;
+  }
 
   assert.equal(manager.getRoom(r1.roomCode), null);
   assert.ok(manager.getRoom(r2.roomCode));
@@ -297,6 +302,7 @@ test('handleListRooms emits waiting and active spectatable rooms', () => {
 test('emitGameEnded emits payload', () => {
   const { io, roomEvents } = createIoRecorder();
   const room = new GameRoom('ABCD');
+  room.manualCoinFlip = true;
   room.addPlayer(createPlayer('s1', 'A', 'h1', 'w', false));
   room.addPlayer(createPlayer('s2', 'B', 'h2', 'b', false));
   emitGameEnded(io, room, 'timeout', 'w');
@@ -313,6 +319,7 @@ test('scheduleRoomDeletion and autoResignOnTimeout lifecycle', () => {
   const manager = new GameManager();
   const { io, roomEvents } = createIoRecorder();
   const room = manager.createRoom(false);
+  room.manualCoinFlip = true;
   room.addPlayer(createPlayer('s1', 'A', 'h1', 'w', false));
   room.addPlayer(createPlayer('s2', 'B', 'h2', 'b', false));
   room.status = 'active';
