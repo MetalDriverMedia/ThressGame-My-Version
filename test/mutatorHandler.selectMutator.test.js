@@ -4,10 +4,13 @@ const assert = require('node:assert/strict');
 const { GameManager, GameRoom } = require('../gameManager');
 const { createMutatorHandlers } = require('../handlers/mutatorHandler');
 const { RULES } = require('../mutators/mutatorDefs');
+const turnClock = require('../utils/turnClock');
 const {
   createIoRecorder,
   createRegisteredSocket,
 } = require('./helpers/moveHandlerTestHelpers');
+
+const roomsToCleanup = new Set();
 
 function setupMutatorSelectionRoom({ roomCode = 'MSEL1', chooser = 'w', whiteIsBot = false, blackIsBot = false } = {}) {
   const gameManager = new GameManager();
@@ -15,6 +18,7 @@ function setupMutatorSelectionRoom({ roomCode = 'MSEL1', chooser = 'w', whiteIsB
   room.addPlayer({ name: 'White', color: 'w', socketId: 'sock-w', isBot: whiteIsBot });
   room.addPlayer({ name: 'Black', color: 'b', socketId: 'sock-b', isBot: blackIsBot });
   room.startGame();
+  roomsToCleanup.add(room);
 
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
@@ -38,6 +42,11 @@ function setupMutatorSelectionRoom({ roomCode = 'MSEL1', chooser = 'w', whiteIsB
 
   return { gameManager, room, whiteSocket, blackSocket, io, roomEvents };
 }
+
+test.afterEach(() => {
+  for (const room of roomsToCleanup) turnClock.clearClock(room);
+  roomsToCleanup.clear();
+});
 
 function getRule(id) {
   const rule = RULES.find((r) => r.id === id);
