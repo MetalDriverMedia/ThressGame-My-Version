@@ -12,6 +12,7 @@ const { isKingInCheck, wouldLeaveKingInCheck, getPseudoLegalDestinations } = req
 const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } = require('../mutators/boardUtils');
 const turnClock = require('../utils/turnClock');
 const { validateRoomIntegrity } = require('../utils/roomIntegrity');
+const { isMoveAllowed } = require('../mutators/legalMoveEngine');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -130,76 +131,24 @@ async function handleMove(io, socket, gameManager, data) {
   // Handle promotion
   const chosenPromotion = validatePromotion(pieceAtFrom, to, promotion);
 
-  // --- Mutator Restriction Check --------------------------------
-  if (room.mutatorState && room.mutatorState.activeRules.length > 0) {
-    const ms = room.mutatorState;
-    const restrictionRules = ms.activeRules.filter(ar => {
-      const ruleHooks = getHooks(ar.rule.id);
-      return ruleHooks.getLegalMoveModifiers;
-    });
+  // --- Move Allowance Check --------------------------------
+  const ms = room.mutatorState;
+  const restrictionRules = ms?.activeRules?.filter(ar => {
+    const ruleHooks = getHooks(ar.rule.id);
+    return ruleHooks.getLegalMoveModifiers;
+  }) || [];
 
-    if (restrictionRules.length > 0) {
-      let legalMoves = room.chess.moves({ verbose: true });
+  const allowance = isMoveAllowed(room, player.color, from, to, chosenPromotion, {
+    syntheticMovesBeforeRestrictions: true,
+  });
 
-      // Include custom moves (short_stop knights, estrogen, god_kings, etc.)
-      const customMoves = getCustomMoves(room, player.color);
-      for (const cm of customMoves) {
-        if (!legalMoves.some(m => m.from === cm.from && m.to === cm.to)) {
-          legalMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
-        }
-      }
+  if (!allowance.allowed) {
+    const message = restrictionRules.length > 0 ? 'Move blocked by active rule.' : 'Illegal move.';
+    socket.emit('moveRejected', { error: message });
+    return;
+  }
 
-      // Include wrap moves (Pacman Style)
-      if (isRuleActive(ms, 'pacman_style')) {
-        const wrapMoves = getWrapMoves(room, player.color);
-        for (const wm of wrapMoves) {
-          if (!legalMoves.some(m => m.from === wm.from && m.to === wm.to)) {
-            legalMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
-          }
-        }
-      }
-
-      // Fake-check fallback: chess.js may have filtered out non-check-resolving
-      // moves, but mutator-aware logic says the king isn't actually threatened.
-      // Add pseudo-legal destinations so the restriction filter can evaluate them.
-      if (room.chess.inCheck()) {
-        const fakeBoard = fenToBoard(room.chess.fen());
-        if (!isKingInCheck(fakeBoard, player.color, ms)) {
-          for (const [sq, piece] of fakeBoard) {
-            if (piece.color !== player.color) continue;
-            const dests = getPseudoLegalDestinations(sq, piece, fakeBoard, ms);
-            for (const dest of dests) {
-              if (legalMoves.some(m => m.from === sq && m.to === dest)) continue;
-              if (wouldLeaveKingInCheck(fakeBoard, sq, dest, player.color, ms)) continue;
-              legalMoves.push({ from: sq, to: dest, flags: 'n', san: dest, piece: piece.type });
-            }
-          }
-        }
-      }
-
-      // Sort so forced-move rules (tornado, bloodthirsty) run last and override distance filters
-      const FORCED_MOVE_RULES = new Set(['tornado', 'bloodthirsty']);
-      const sorted = [...restrictionRules].sort((a, b) => {
-        const aForced = FORCED_MOVE_RULES.has(a.rule.id) ? 1 : 0;
-        const bForced = FORCED_MOVE_RULES.has(b.rule.id) ? 1 : 0;
-        return aForced - bForced;
-      });
-
-      for (const ar of sorted) {
-        const ruleHooks = getHooks(ar.rule.id);
-        const filterFn = ruleHooks.getLegalMoveModifiers(room, player.color);
-        if (filterFn) {
-          legalMoves = filterFn(legalMoves);
-        }
-      }
-
-      const moveAllowed = legalMoves.some(m => m.from === from && m.to === to);
-      if (!moveAllowed) {
-        socket.emit('moveRejected', { error: 'Move blocked by active rule.' });
-        return;
-      }
-    }
-
+  if (ms && ms.activeRules.length > 0) {
     // Mutator-aware self-check validation: chess.js doesn't know about
     // mutator-extended attacks (e.g. Short Stop's orthogonal knight attacks).
     // Reject moves that leave the king in mutator-aware check.
