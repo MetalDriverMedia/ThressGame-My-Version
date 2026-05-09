@@ -199,7 +199,7 @@ test('sophies_choice selectMutator generates deterministic options and removes c
     assert.ok(whitePrompt);
     assert.deepEqual(whitePrompt.payload.sophieOptions, ['d4', 'c3']);
 
-    whiteSocket.trigger('mutatorActionResponse', { targets: 'd2' });
+    whiteSocket.trigger('mutatorActionResponse', { targets: 'd4' });
     assert.equal(room.mutatorState.pendingSecondAction.forPlayer, 'b');
 
     const blackPrompt = blackSocket.emitted.find((e) => e.name === 'mutatorAction' && e.payload.actionType === 'sophie');
@@ -211,7 +211,7 @@ test('sophies_choice selectMutator generates deterministic options and removes c
     Math.random = originalRandom;
   }
 
-  assert.equal(room.chess.get('d2'), undefined);
+  assert.equal(room.chess.get('d4'), undefined);
   assert.equal(room.chess.get('d5'), undefined);
   assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated' && e.payload.rule.id === 'sophies_choice'));
 });
