@@ -41,7 +41,7 @@ function getEffectiveLegalMoves(room, color, options = {}) {
 
     for (const ar of restrictionRules) {
       const ruleHooks = getHooks(ar.rule.id);
-      const filterFn = ruleHooks.getLegalMoveModifiers(room, currentTurn, options);
+      const filterFn = ruleHooks.getLegalMoveModifiers(room, currentTurn);
       if (filterFn) {
         legalMoves = filterFn(legalMoves);
       }
