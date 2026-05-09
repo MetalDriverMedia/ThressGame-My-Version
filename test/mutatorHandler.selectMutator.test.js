@@ -211,7 +211,12 @@ test('selectMutator all_on_red auto mode triggers immediate coin flip result', (
   }
 
   assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
+  const coinFlipEvent = roomEvents.find((e) => e.name === 'coinFlip');
+  assert.ok(coinFlipEvent);
+  assert.equal(coinFlipEvent.payload.forPlayer, 'w');
+  assert.equal(coinFlipEvent.payload.result, 'heads');
   assert.deepEqual(room.mutatorState.coinFlipResult, { result: 'heads', moveCount: room.mutatorState.moveCount });
+  assert.equal(room.mutatorState.pendingCoinFlip, null);
 });
 
 test('selectMutator all_on_red manual mode creates pendingCoinFlip and emits prompt', () => {
@@ -224,7 +229,11 @@ test('selectMutator all_on_red manual mode creates pendingCoinFlip and emits pro
   whiteSocket.trigger('selectMutator', { ruleId: option.id });
 
   assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
-  assert.ok(room.mutatorState.pendingCoinFlip || room.mutatorState.coinFlipResult);
+  const prompt = roomEvents.find((e) => e.name === 'coinFlipPrompt');
+  assert.ok(prompt);
+  assert.equal(prompt.payload.forPlayer, 'w');
+  assert.deepEqual(room.mutatorState.pendingCoinFlip, { forPlayer: 'w', moveCount: room.mutatorState.moveCount });
+  assert.equal(room.mutatorState.coinFlipResult, null);
 });
 
 test('selectMutator schedules bot auto response for bot chooser requiresChoice without real timer', () => {
