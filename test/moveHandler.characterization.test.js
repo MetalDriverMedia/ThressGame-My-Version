@@ -53,7 +53,7 @@ test('handleMove accepts a normal legal move and emits moveApplied', async () =>
 
   assert.equal(socket.emitted.length, 0);
   assert.equal(room.chess.get('e4').type, 'p');
-  assert.equal(room.chess.get('e2'), null);
+  assert.equal(room.chess.get('e2'), undefined);
   assert.equal(room.chess.turn(), 'b');
 
   const moveApplied = roomEvents.find(e => e.name === 'moveApplied');
@@ -75,7 +75,7 @@ test('handleMove rejects illegal player moves', async () => {
   await handleMove(io, socket, gameManager, { from: 'e2', to: 'e5' });
 
   assert.equal(room.chess.get('e2').type, 'p');
-  assert.equal(room.chess.get('e5'), null);
+  assert.equal(room.chess.get('e5'), undefined);
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { error: 'Illegal move.' } });
   assert.equal(roomEvents.some(e => e.name === 'moveApplied'), false);
 });
