@@ -59,3 +59,17 @@ test('checkMutatorDeadlock still works through delegated legal move engine path'
   assert.equal(room.endReason, 'stalemate');
   assert.ok(events.includes('gameEnded'));
 });
+
+test('syntheticMovesBeforeRestrictions option applies restrictions to synthetic moves', () => {
+  const room = new GameRoom('TST05');
+  room.chess.load('4k3/8/8/8/8/8/8/1N2K3 w - - 0 1');
+  room.mutatorState = createMutatorState();
+  room.mutatorState.activeRules.push({ rule: { id: 'short_stop' } });
+  room.mutatorState.activeRules.push({ rule: { id: 'hobbit_battle' } });
+
+  const defaultMoves = getEffectiveLegalMoves(room, 'w');
+  const preRestrictionMoves = getEffectiveLegalMoves(room, 'w', { syntheticMovesBeforeRestrictions: true });
+
+  assert.ok(defaultMoves.some(m => m.from === 'b1' && m.to === 'b2'));
+  assert.equal(preRestrictionMoves.length, 0);
+});

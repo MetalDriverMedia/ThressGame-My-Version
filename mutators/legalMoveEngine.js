@@ -5,6 +5,30 @@ const { isRuleActive } = require('./mutatorEngine');
 const { isKingInCheck, getPseudoLegalDestinations, wouldLeaveKingInCheck } = require('./checkDetector');
 const { fenToBoard } = require('./boardUtils');
 
+function appendSyntheticMoves(room, currentTurn, legalMoves) {
+  const ms = room.mutatorState;
+  if (!ms) return legalMoves;
+
+  const mergedMoves = [...legalMoves];
+  const custom = getCustomMoves(room, currentTurn);
+  for (const cm of custom) {
+    if (!mergedMoves.some(m => m.from === cm.from && m.to === cm.to)) {
+      mergedMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
+    }
+  }
+
+  if (isRuleActive(ms, 'pacman_style')) {
+    const wraps = getWrapMoves(room, currentTurn);
+    for (const wm of wraps) {
+      if (!mergedMoves.some(m => m.from === wm.from && m.to === wm.to)) {
+        mergedMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
+      }
+    }
+  }
+
+  return mergedMoves;
+}
+
 function getEffectiveLegalMoves(room, color, options = {}) {
   const ms = room.mutatorState;
   const currentTurn = color || room.chess.turn();
@@ -24,6 +48,10 @@ function getEffectiveLegalMoves(room, color, options = {}) {
         }
       }
     }
+  }
+
+  if (options.syntheticMovesBeforeRestrictions) {
+    legalMoves = appendSyntheticMoves(room, currentTurn, legalMoves);
   }
 
   if (ms && ms.activeRules.length > 0) {
@@ -48,22 +76,8 @@ function getEffectiveLegalMoves(room, color, options = {}) {
     }
   }
 
-  if (ms) {
-    const custom = getCustomMoves(room, currentTurn);
-    for (const cm of custom) {
-      if (!legalMoves.some(m => m.from === cm.from && m.to === cm.to)) {
-        legalMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
-      }
-    }
-
-    if (isRuleActive(ms, 'pacman_style')) {
-      const wraps = getWrapMoves(room, currentTurn);
-      for (const wm of wraps) {
-        if (!legalMoves.some(m => m.from === wm.from && m.to === wm.to)) {
-          legalMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
-        }
-      }
-    }
+  if (!options.syntheticMovesBeforeRestrictions) {
+    legalMoves = appendSyntheticMoves(room, currentTurn, legalMoves);
   }
 
   return legalMoves;

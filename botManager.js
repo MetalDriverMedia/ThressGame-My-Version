@@ -5,8 +5,7 @@
 const crypto = require('crypto');
 const { createPlayer } = require('./gameController');
 const { getBestMove, evaluateBoard } = require('./bots/botAI');
-const { getHooks, getCustomMoves, getWrapMoves } = require('./mutators/ruleHooks');
-const { isRuleActive } = require('./mutators/mutatorEngine');
+const { getEffectiveLegalMoves } = require('./mutators/legalMoveEngine');
 const { COLUMNS, ROWS, getIntermediateSquares } = require('./mutators/boardUtils');
 const { checkMutatorDeadlock } = require('./utils/gameLifecycle');
 
@@ -139,60 +138,19 @@ function scheduleBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) {
   room.disconnectTimers.set('bot_move', timer);
 }
 
-/**
- * Apply active mutator restriction filters to narrow the legal move pool.
- * Mirrors the restriction check in moveHandler.js so bots only pick valid moves.
- *
- * @param {Object} room - GameRoom instance
- * @param {string} playerColor - The bot's color ('w' or 'b')
- * @returns {Array} Filtered array of legal move objects
- */
-function getMutatorFilteredMoves(room, playerColor) {
-  let legalMoves = room.chess.moves({ verbose: true });
-  if (!room.mutatorState || room.mutatorState.activeRules.length === 0) {
-    return legalMoves;
+function getBotMovePool(room, playerColor) {
+  const effectiveMoves = getEffectiveLegalMoves(room, playerColor, { syntheticMovesBeforeRestrictions: true });
+  const seen = new Set();
+  const uniqueMoves = [];
+
+  for (const move of effectiveMoves) {
+    const key = `${move.from}->${move.to}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueMoves.push(move);
   }
 
-  const restrictionRules = room.mutatorState.activeRules.filter(ar => {
-    const ruleHooks = getHooks(ar.rule.id);
-    return ruleHooks.getLegalMoveModifiers;
-  });
-
-  // Include custom moves before filtering so distance filters can evaluate them
-  const custom = getCustomMoves(room, playerColor);
-  for (const cm of custom) {
-    if (!legalMoves.some(m => m.from === cm.from && m.to === cm.to)) {
-      legalMoves.push({ from: cm.from, to: cm.to, flags: 'n', san: cm.to });
-    }
-  }
-
-  // Include wrap moves from Pacman Style
-  if (isRuleActive(room.mutatorState, 'pacman_style')) {
-    const wraps = getWrapMoves(room, playerColor);
-    for (const wm of wraps) {
-      if (!legalMoves.some(m => m.from === wm.from && m.to === wm.to)) {
-        legalMoves.push({ from: wm.from, to: wm.to, flags: 'n', san: wm.to });
-      }
-    }
-  }
-
-  // Sort so forced-move rules (tornado, bloodthirsty) run last and override distance filters
-  const FORCED_MOVE_RULES = new Set(['tornado', 'bloodthirsty']);
-  restrictionRules.sort((a, b) => {
-    const aForced = FORCED_MOVE_RULES.has(a.rule.id) ? 1 : 0;
-    const bForced = FORCED_MOVE_RULES.has(b.rule.id) ? 1 : 0;
-    return aForced - bForced;
-  });
-
-  for (const ar of restrictionRules) {
-    const ruleHooks = getHooks(ar.rule.id);
-    const filterFn = ruleHooks.getLegalMoveModifiers(room, playerColor);
-    if (filterFn) {
-      legalMoves = filterFn(legalMoves);
-    }
-  }
-
-  return legalMoves;
+  return uniqueMoves;
 }
 
 /**
@@ -218,8 +176,8 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
     return;
   }
 
-  // Get mutator-filtered legal moves (respects active restrictions)
-  let allMoves = getMutatorFilteredMoves(room, currentTurn);
+  // Get shared effective legal moves (respects active restrictions)
+  let allMoves = getBotMovePool(room, currentTurn);
   if (allMoves.length === 0) {
     checkMutatorDeadlock(room, io, gameManager);
     return;
@@ -428,4 +386,5 @@ module.exports = {
   scheduleBotMove,
   performBotMove,
   generateBotTarget,
+  getBotMovePool,
 };
