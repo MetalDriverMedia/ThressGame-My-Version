@@ -83,4 +83,31 @@ function getEffectiveLegalMoves(room, color, options = {}) {
   return legalMoves;
 }
 
-module.exports = { getEffectiveLegalMoves };
+
+function isMoveAllowed(room, color, from, to, promotion, options = {}) {
+  const legalMoves = getEffectiveLegalMoves(room, color, options);
+
+  const matchedMove = legalMoves.find((move) => {
+    if (move.from !== from || move.to !== to) return false;
+
+    if (move.promotion) {
+      return promotion === move.promotion;
+    }
+
+    return true;
+  });
+
+  if (!matchedMove) {
+    return {
+      allowed: false,
+      reason: 'not_in_effective_legal_moves',
+    };
+  }
+
+  return {
+    allowed: true,
+    matchedMove,
+  };
+}
+
+module.exports = { getEffectiveLegalMoves, isMoveAllowed };
