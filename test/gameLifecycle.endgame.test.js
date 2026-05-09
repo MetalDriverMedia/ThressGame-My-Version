@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { GameManager } = require('../gameManager');
+const { GameManager, GameRoom } = require('../gameManager');
 const { createPlayer } = require('../gameController');
 const { handleMove } = require('../handlers/moveHandler');
 const {
@@ -40,8 +40,7 @@ function createSocket(id) {
 
 function createActiveRoom({ roomCode = 'END01', fen = null, manualCoinFlip = true, disabledMutators = [], mutatorsEnabled = false } = {}) {
   const gameManager = new GameManager();
-  const room = gameManager.createRoom();
-  room.roomCode = roomCode;
+  const room = new GameRoom(roomCode);
   gameManager.rooms.set(roomCode, room);
 
   const white = createPlayer('sock-w', 'White', 'hash-w', 'w', false);
