@@ -848,7 +848,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
     });
 
     socket.on('coinFlipChoice', (data) => {
-      if (!data || typeof data.choice !== 'string') return;
+      if (!data || (data.choice !== 'heads' && data.choice !== 'tails')) return;
 
       const room = gameManager.getRoomForSocket(socket.id);
       if (!room || !room.mutatorState) return;
@@ -857,7 +857,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       const player = room.getPlayerBySocket(socket.id);
       if (!player || player.color !== ms.pendingCoinFlip.forPlayer) return;
 
-      const choice = data.choice === 'heads' ? 'heads' : 'tails';
+      const choice = data.choice;
       ms.coinFlipResult = { result: choice, moveCount: ms.moveCount };
       ms.pendingCoinFlip = null;
 

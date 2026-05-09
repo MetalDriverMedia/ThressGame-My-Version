@@ -195,7 +195,37 @@ test('selectMutator skips drafted_for_battle when a player lacks bishop/knight',
 
 
 
-test.skip('selectMutator all_on_red characterization (deferred): coin flip lifecycle coupling', () => {});
+test('selectMutator all_on_red auto mode triggers immediate coin flip result', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorSelectionRoom({ roomCode: 'MSEL-K1' });
+  const option = getRule('all_on_red');
+  room.manualCoinFlip = false;
+  room.chess.load('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
+  room.mutatorState.pendingChoice = { chooser: 'w', options: [option] };
+
+  const originalRandom = Math.random;
+  try {
+    Math.random = () => 0.1;
+    whiteSocket.trigger('selectMutator', { ruleId: option.id });
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
+  assert.deepEqual(room.mutatorState.coinFlipResult, { result: 'heads', moveCount: room.mutatorState.moveCount });
+});
+
+test('selectMutator all_on_red manual mode creates pendingCoinFlip and emits prompt', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorSelectionRoom({ roomCode: 'MSEL-K2' });
+  const option = getRule('all_on_red');
+  room.manualCoinFlip = true;
+  room.chess.load('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
+  room.mutatorState.pendingChoice = { chooser: 'w', options: [option] };
+
+  whiteSocket.trigger('selectMutator', { ruleId: option.id });
+
+  assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
+  assert.ok(room.mutatorState.pendingCoinFlip || room.mutatorState.coinFlipResult);
+});
 
 test('selectMutator schedules bot auto response for bot chooser requiresChoice without real timer', () => {
   const { room, whiteSocket } = setupMutatorSelectionRoom({ roomCode: 'MSEL-L', chooser: 'w', whiteIsBot: true });
