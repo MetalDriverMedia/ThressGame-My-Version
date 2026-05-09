@@ -6,10 +6,14 @@ const { createMutatorHandlers } = require('../handlers/mutatorHandler');
 const { handleMove } = require('../handlers/moveHandler');
 const { RULES } = require('../mutators/mutatorDefs');
 const { triggerCoinFlip, checkCoinFlipSkipTurn } = require('../utils/gameLifecycle');
+const turnClock = require('../utils/turnClock');
 const {
   createIoRecorder,
   createRegisteredSocket,
 } = require('./helpers/moveHandlerTestHelpers');
+
+
+const roomsToCleanup = new Set();
 
 function getRule(id) {
   const rule = RULES.find((r) => r.id === id);
@@ -42,6 +46,8 @@ function setupCoinFlipRoom({ roomCode = 'CFLP1', fen = null, manualCoinFlip = fa
   room.manualCoinFlip = manualCoinFlip;
   room.mutatorState = room.mutatorState || { moveCount: 0, activeRules: [] };
 
+  roomsToCleanup.add(room);
+
   gameManager.rooms.set(room.roomCode, room);
   gameManager.setSocketRoom('sock-w', room.roomCode);
   gameManager.setSocketRoom('sock-b', room.roomCode);
@@ -66,6 +72,11 @@ function setupCoinFlipRoom({ roomCode = 'CFLP1', fen = null, manualCoinFlip = fa
 function activateAllOnRed(room, chooser = 'w', duration = 3) {
   room.mutatorState.activeRules.push({ rule: getRule('all_on_red'), chooser, remainingMoves: duration });
 }
+
+test.afterEach(() => {
+  for (const room of roomsToCleanup) turnClock.clearClock(room);
+  roomsToCleanup.clear();
+});
 
 test('triggerCoinFlip manual mode creates pendingCoinFlip and emits prompt', () => {
   const { room, io, roomEvents } = setupCoinFlipRoom({ roomCode: 'CFLP-A', manualCoinFlip: true });
