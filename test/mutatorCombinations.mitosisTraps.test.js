@@ -87,7 +87,7 @@ test('rule ids exist and mitosis stores choiceData/expiresAtMove', () => {
   setPendingAction(room, 'mitosis');
   whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
   const active = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
-  assert.equal(active.choiceData, 'd5');
+  assert.equal(active.choiceData.square, 'd5');
   assert.equal(typeof active.expiresAtMove, 'number');
 });
 

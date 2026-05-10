@@ -165,8 +165,10 @@ test('pre-expiry target movement blocked when drafted state also exists', async 
   const { room, gameManager, io, whiteSocket, blackSocket, moveSocketWhite } = createRoom({ roomCode: 'MD-6', fen: BASE_FEN });
   applyMitosis(room, whiteSocket, 'g2');
   applyDrafted(room, whiteSocket, blackSocket);
+  const mitosis = room.mutatorState.activeRules.find((r) => r.rule.id === 'mitosis');
+  const trackedSquare = typeof mitosis?.choiceData === 'string' ? mitosis.choiceData : mitosis?.choiceData?.square;
   const before = room.mutatorState.moveCount;
-  await handleMove(io, moveSocketWhite, gameManager, { from: 'g2', to: 'f3' });
+  await handleMove(io, moveSocketWhite, gameManager, { from: trackedSquare, to: 'f3' });
   assert.deepEqual(moveSocketWhite.emitted.at(-1), { name: 'moveRejected', payload: { error: 'Move blocked by active rule.' } });
   assert.equal(room.mutatorState.moveCount, before);
   assertFinalSanity(room, 'test:md-pre-expiry-blocked');

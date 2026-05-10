@@ -122,7 +122,7 @@ test('mitosis baseline stores target, blocks movement, and duplicates once on ex
 
   const active = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
   assert.ok(active);
-  assert.equal(active.choiceData, 'd5');
+  assert.equal(active.choiceData.square, 'd5');
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'd5', to: 'e7' });
   assert.deepEqual(moveSocketWhite.emitted[0], { name: 'moveRejected', payload: { error: 'Move blocked by active rule.' } });
@@ -164,7 +164,7 @@ test('combination allows mitosis targeting two-kids bishop and duplicates it on 
 
   const mitosisRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
   assert.ok(mitosisRule);
-  assert.equal(mitosisRule.choiceData, 'c3');
+  assert.equal(mitosisRule.choiceData.square, 'c3');
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'c3', to: 'd4' });
   assert.deepEqual(moveSocketWhite.emitted[0], { name: 'moveRejected', payload: { message: "That piece can't move on the same turn it was placed." } });
@@ -203,7 +203,7 @@ test('two kids activation while mitosis tracks another piece preserves mitosis t
   whiteSocket.trigger('mutatorActionResponse', { targets: 'c3' });
 
   const mitosisRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
-  assert.equal(mitosisRule.choiceData, 'd2');
+  assert.equal(mitosisRule.choiceData.square, 'd2');
   assert.deepEqual(room.chess.get('c3'), { type: 'b', color: 'w' });
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'h1', to: 'h2' });
