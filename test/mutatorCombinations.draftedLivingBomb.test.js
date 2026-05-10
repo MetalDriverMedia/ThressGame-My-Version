@@ -71,7 +71,7 @@ test('baseline living bomb activation records marker, active rule, and valid boa
   assert.equal(validateRoomIntegrity(room, 'test:dlb-baseline'), true);
 });
 
-test('living bomb invalid targets: empty/off-board rejected and king target blocked', () => {
+test('living bomb ignores off-board target, accepts empty square as null marker, and blocks king target', () => {
   const { room, whiteSocket } = createRoom({ roomCode: 'DLB-2', fen: '4k3/8/8/8/8/8/3P4/4K3 w - - 0 1' });
   setPending(room, 'living_bomb');
 
@@ -106,7 +106,7 @@ test('baseline drafted for battle swaps selected bishop/knight with each king', 
   assert.equal(validateRoomIntegrity(room, 'test:dlb-drafted-baseline'), true);
 });
 
-test('living bomb target then drafted: bomb follows moved piece after drafted swap', () => {
+test('living bomb target then drafted keeps marker on original square with original piece metadata', () => {
   const { room, whiteSocket, blackSocket } = createRoom({ roomCode: 'DLB-4', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
 
   setPending(room, 'living_bomb');
