@@ -87,7 +87,7 @@ test('activation stores mitosis target in activeRules.choiceData and clears pend
 
   const active = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
   assert.ok(active);
-  assert.equal(active.choiceData, 'd5');
+  assert.equal(active.choiceData.square, 'd5');
   assert.equal(typeof active.expiresAtMove, 'number');
   assert.equal(room.mutatorState.pendingAction, null);
   assert.deepEqual(room.chess.get('d5'), { type: 'n', color: 'w' });
@@ -105,7 +105,7 @@ test('mitosis accepts empty and enemy non-king targets, rejects king targets, an
   whiteSocket.trigger('mutatorActionResponse', { targets: 'a1' });
   const emptyTargetRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
   assert.ok(emptyTargetRule);
-  assert.equal(emptyTargetRule.choiceData, 'a1');
+  assert.equal(emptyTargetRule.choiceData.square, 'a1');
   assert.equal(room.mutatorState.pendingAction, null);
   assert.equal(room.chess.fen(), startFen);
 
@@ -114,7 +114,7 @@ test('mitosis accepts empty and enemy non-king targets, rejects king targets, an
   whiteSocket.trigger('mutatorActionResponse', { targets: 'h2' });
   const enemyTargetRule = room.mutatorState.activeRules.filter((ar) => ar.rule.id === 'mitosis').at(-1);
   assert.ok(enemyTargetRule);
-  assert.equal(enemyTargetRule.choiceData, 'h2');
+  assert.equal(enemyTargetRule.choiceData.square, 'h2');
   assert.equal(room.mutatorState.pendingAction, null);
   assert.equal(room.chess.fen(), startFen);
   assert.doesNotThrow(() => validateRoomIntegrity(room, 'test:mitosis-enemy-target'));

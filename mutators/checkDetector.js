@@ -240,7 +240,9 @@ function canPieceMove(square, piece, mutatorState) {
 
   // Mitosis: the chosen square can't move while the rule is active
   for (const ar of activeRules) {
-    if (ar.rule.id === 'mitosis' && ar.choiceData === square) return false;
+    if (ar.rule.id !== 'mitosis') continue;
+    const targetSquare = typeof ar.choiceData === 'string' ? ar.choiceData : ar.choiceData?.square;
+    if (targetSquare === square) return false;
   }
 
   // Proletariat is NOT a full immobilization -- non-pawn pieces still move (as pawns)

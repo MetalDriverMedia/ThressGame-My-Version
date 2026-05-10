@@ -90,7 +90,7 @@ test('baseline: mitosis + living bomb activation state shape and expiry metadata
   whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
   const mitosis = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
   assert.ok(mitosis);
-  assert.equal(mitosis.choiceData, 'd5');
+  assert.equal(mitosis.choiceData.square, 'd5');
 
   setPendingAction(room, 'living_bomb');
   whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });

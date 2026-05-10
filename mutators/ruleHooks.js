@@ -239,6 +239,53 @@ function cleanupLivingBombMarkers(room, board = null) {
   });
 }
 
+function getMitosisTargetMetadata(activeRule) {
+  const data = activeRule?.choiceData;
+  if (!data) return null;
+  if (typeof data === 'string') return { square: data, piece: null, color: null };
+  if (typeof data !== 'object') return null;
+  return {
+    square: data.square || null,
+    piece: data.piece || null,
+    color: data.color || null,
+    expiresAtMove: data.expiresAtMove,
+  };
+}
+
+function trackMitosisTargetMove(room, from, to, piece) {
+  const activeRules = room?.mutatorState?.activeRules;
+  if (!Array.isArray(activeRules) || !piece) return;
+  for (const ar of activeRules) {
+    if (ar.rule.id !== 'mitosis') continue;
+    const meta = getMitosisTargetMetadata(ar);
+    if (!meta?.square || meta.square !== from) continue;
+    if (meta.piece && (meta.piece !== piece.type || meta.color !== piece.color)) continue;
+    if (typeof ar.choiceData === 'string') ar.choiceData = to;
+    else ar.choiceData.square = to;
+  }
+}
+
+function cleanupMitosisTargets(room, board = null) {
+  const activeRules = room?.mutatorState?.activeRules;
+  if (!Array.isArray(activeRules)) return;
+  const boardState = board || getBoardFromRoom(room);
+  for (const ar of activeRules) {
+    if (ar.rule.id !== 'mitosis') continue;
+    const meta = getMitosisTargetMetadata(ar);
+    if (!meta?.square) continue;
+    const piece = boardState.get(meta.square);
+    if (!piece) {
+      if (typeof ar.choiceData === 'string') ar.choiceData = null;
+      else ar.choiceData.square = null;
+      continue;
+    }
+    if (meta.piece && (piece.type !== meta.piece || piece.color !== meta.color)) {
+      if (typeof ar.choiceData === 'string') ar.choiceData = null;
+      else ar.choiceData.square = null;
+    }
+  }
+}
+
 function safeMovePiece(room, board, from, to) {
   const movingPiece = board.get(from);
   let finalSquare = to;
@@ -255,9 +302,11 @@ function safeMovePiece(room, board, from, to) {
   }
 
   if (movingPiece) trackLivingBombMove(room, from, finalSquare, movingPiece);
+  if (movingPiece) trackMitosisTargetMove(room, from, finalSquare, movingPiece);
 
   const destroyed = triggerSoftRestrictions(room, board, finalSquare);
   if (destroyed) cleanupLivingBombMarkers(room, board);
+  if (destroyed) cleanupMitosisTargets(room, board);
   if (destroyed) cleanupLockedSquaresAfterTrap(room);
   return finalSquare;
 }
@@ -295,10 +344,13 @@ function safeSwapSquares(room, board, sq1, sq2) {
   swapSquares(board, sq1, sq2);
   if (p1) trackLivingBombMove(room, sq1, sq2, p1);
   if (p2) trackLivingBombMove(room, sq2, sq1, p2);
+  if (p1) trackMitosisTargetMove(room, sq1, sq2, p1);
+  if (p2) trackMitosisTargetMove(room, sq2, sq1, p2);
 
   const destroyed1 = p1 ? triggerSoftRestrictions(room, board, sq2) : false;
   const destroyed2 = p2 ? triggerSoftRestrictions(room, board, sq1) : false;
   if (destroyed1 || destroyed2) cleanupLivingBombMarkers(room, board);
+  if (destroyed1 || destroyed2) cleanupMitosisTargets(room, board);
   if (destroyed1 || destroyed2) cleanupLockedSquaresAfterTrap(room);
 
   return true;
@@ -1472,12 +1524,28 @@ const hooks = {
 
   // --- Mitosis --------------------------------------------------
   mitosis: {
+    onActivate(room, chooserColor, choiceData) {
+      if (!choiceData) return;
+      const ms = room.mutatorState;
+      const board = getBoardFromRoom(room);
+      const targetPiece = board.get(choiceData);
+      const activeRule = [...ms.activeRules].reverse().find(ar => ar.rule.id === 'mitosis' && ar.choiceData === choiceData);
+      if (!activeRule) return;
+      activeRule.choiceData = {
+        square: choiceData,
+        piece: targetPiece ? targetPiece.type : null,
+        color: targetPiece ? targetPiece.color : null,
+        expiresAtMove: activeRule.expiresAtMove,
+      };
+    },
     getLegalMoveModifiers(room, playerColor) {
       // The chosen piece cannot move while mitosis is active
       const ms = room.mutatorState;
       const activeRules = ms.activeRules.filter(ar => ar.rule.id === 'mitosis');
       if (activeRules.length === 0) return null;
-      const frozenSquares = new Set(activeRules.map(ar => ar.choiceData));
+      const frozenSquares = new Set(
+        activeRules.map(ar => getMitosisTargetMetadata(ar)?.square).filter(Boolean)
+      );
       return (moves) => moves.filter(m => !frozenSquares.has(m.from));
     },
     onCapture(room, playerColor, capturedPiece, captureSquare) {
@@ -1485,19 +1553,26 @@ const hooks = {
       // onExpire doesn't duplicate the attacker's piece
       const ms = room.mutatorState;
       for (const ar of ms.activeRules) {
-        if (ar.rule.id === 'mitosis' && ar.choiceData === captureSquare) {
-          ar.choiceData = null;
-        }
+        if (ar.rule.id !== 'mitosis') continue;
+        const meta = getMitosisTargetMetadata(ar);
+        if (meta?.square === captureSquare) ar.choiceData = typeof ar.choiceData === 'string' ? null : { ...ar.choiceData, square: null };
       }
     },
-    onExpire(room, activeRule) {
-      if (!activeRule || !activeRule.choiceData) return;
-      const targetSquare = activeRule.choiceData;
+    onAfterMove(room, playerColor, move) {
       const board = getBoardFromRoom(room);
-      const piece = board.get(targetSquare);
-      if (piece && piece.type !== 'k') {
+      const movedPiece = board.get(move.to);
+      if (movedPiece) trackMitosisTargetMove(room, move.from, move.to, movedPiece);
+      cleanupMitosisTargets(room, board);
+    },
+    onExpire(room, activeRule) {
+      const board = getBoardFromRoom(room);
+      cleanupMitosisTargets(room, board);
+      const meta = getMitosisTargetMetadata(activeRule);
+      if (!meta?.square) return;
+      const piece = board.get(meta.square);
+      if (piece && piece.type !== 'k' && (!meta.piece || (piece.type === meta.piece && piece.color === meta.color))) {
         // Spawn duplicate in an empty adjacent square (never duplicate kings)
-        const adjacent = getAdjacentSquares(targetSquare);
+        const adjacent = getAdjacentSquares(meta.square);
         const emptyAdj = adjacent.filter(sq => !board.has(sq) && !isSquareHardBlocked(room, sq));
         if (emptyAdj.length > 0) {
           const sq = randomFrom(emptyAdj);

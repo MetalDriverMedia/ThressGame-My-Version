@@ -175,7 +175,7 @@ test('mitosis activates on selected non-king piece and tracks frozen choiceData'
   assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated' && e.payload.rule.id === 'mitosis'));
   const mitosisRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
   assert.ok(mitosisRule);
-  assert.equal(mitosisRule.choiceData, 'd2');
+  assert.equal(mitosisRule.choiceData.square, 'd2');
 });
 
 test('risk_it_rook manual mode defers with pending flip state and prompt event', () => {
