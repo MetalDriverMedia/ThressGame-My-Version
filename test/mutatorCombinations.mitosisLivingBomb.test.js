@@ -101,6 +101,7 @@ test('baseline: mitosis + living bomb activation state shape and expiry metadata
   assert.deepEqual(room.mutatorState.boardModifiers.livingBombs[0], {
     square: 'd5',
     piece: 'n',
+    color: 'w',
     expiresAtMove: livingBomb.expiresAtMove,
   });
   assert.equal(room.mutatorState.pendingAction, null);

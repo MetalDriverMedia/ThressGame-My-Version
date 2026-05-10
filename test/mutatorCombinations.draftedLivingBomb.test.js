@@ -64,7 +64,7 @@ test('baseline living bomb activation records marker, active rule, and valid boa
   assert.equal(room.mutatorState.pendingAction, null);
   assert.equal(room.mutatorState.pendingSecondAction, null);
   assert.ok(room.mutatorState.activeRules.some((ar) => ar.rule.id === 'living_bomb'));
-  assert.deepEqual(room.mutatorState.boardModifiers.livingBombs, [{ square: 'd2', piece: 'p', expiresAtMove: room.mutatorState.activeRules.find((ar) => ar.rule.id === 'living_bomb').expiresAtMove }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.livingBombs, [{ square: 'd2', piece: 'p', color: 'w', expiresAtMove: room.mutatorState.activeRules.find((ar) => ar.rule.id === 'living_bomb').expiresAtMove }]);
   assert.doesNotThrow(() => new Chess(room.chess.fen()));
   assert.deepEqual(room.chess.get('e1'), { type: 'k', color: 'w' });
   assert.deepEqual(room.chess.get('e8'), { type: 'k', color: 'b' });
@@ -81,7 +81,7 @@ test('living bomb ignores off-board target, accepts empty square as null marker,
 
   whiteSocket.trigger('mutatorActionResponse', { targets: 'd4' });
   assert.equal(room.mutatorState.pendingAction, null);
-  assert.deepEqual(room.mutatorState.boardModifiers.livingBombs[0], { square: 'd4', piece: null, expiresAtMove: room.mutatorState.activeRules.find((ar) => ar.rule.id === 'living_bomb').expiresAtMove });
+  assert.deepEqual(room.mutatorState.boardModifiers.livingBombs[0], { square: 'd4', piece: null, color: null, expiresAtMove: room.mutatorState.activeRules.find((ar) => ar.rule.id === 'living_bomb').expiresAtMove });
 
   setPending(room, 'living_bomb');
   whiteSocket.trigger('mutatorActionResponse', { targets: 'e1' });
@@ -120,8 +120,9 @@ test('living bomb target then drafted keeps marker on original square with origi
   assert.deepEqual(room.chess.get('g2'), { type: 'k', color: 'w' });
   assert.deepEqual(room.chess.get('e1'), { type: 'b', color: 'w' });
 
-  assert.equal(room.mutatorState.boardModifiers.livingBombs[0].square, 'g2');
+  assert.equal(room.mutatorState.boardModifiers.livingBombs[0].square, 'e1');
   assert.equal(room.mutatorState.boardModifiers.livingBombs[0].piece, 'b');
+  assert.equal(room.mutatorState.boardModifiers.livingBombs[0].color, 'w');
   assert.equal(room.mutatorState.pendingAction, null);
   assert.equal(room.mutatorState.pendingSecondAction, null);
   assert.equal(validateRoomIntegrity(room, 'test:dlb-bomb-then-drafted'), true);
@@ -141,6 +142,7 @@ test('drafted first then living bomb targets relocated piece at final square', (
   assert.deepEqual(room.mutatorState.boardModifiers.livingBombs[0], {
     square: 'e1',
     piece: 'b',
+    color: 'w',
     expiresAtMove: room.mutatorState.activeRules.find((ar) => ar.rule.id === 'living_bomb').expiresAtMove,
   });
   assert.equal(room.mutatorState.pendingAction, null);
@@ -150,7 +152,7 @@ test('drafted first then living bomb targets relocated piece at final square', (
   assert.equal(room.mutatorState.pendingCoinFlip, null);
 });
 
-test('expiry path: living bomb on drafted king remains stable with no false explosion during normal moves', async () => {
+test('expiry path: living bomb marker follows tracked drafted piece during normal moves with no false explosion', async () => {
   const { room, gameManager, io, whiteSocket, blackSocket, roomEvents } = createRoom({ roomCode: 'DLB-6', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
 
   setPending(room, 'living_bomb');
@@ -164,7 +166,8 @@ test('expiry path: living bomb on drafted king remains stable with no false expl
   await handleMove(io, whiteSocket, gameManager, { from: 'e1', to: 'f2' });
 
   assert.equal(room.mutatorState.boardModifiers.livingBombs.length, 1);
-  assert.deepEqual(room.mutatorState.boardModifiers.livingBombs[0], before);
+  assert.notDeepEqual(room.mutatorState.boardModifiers.livingBombs[0], before);
+  assert.equal(room.mutatorState.boardModifiers.livingBombs[0].square, 'f2');
   assert.deepEqual(room.chess.get('g2'), { type: 'k', color: 'w' });
   assert.deepEqual(room.chess.get('e8'), { type: 'n', color: 'b' });
   assert.equal(roomEvents.filter((e) => e.name === 'gameEnded').length, 0);

@@ -212,7 +212,35 @@ function cleanupLockedSquaresAfterTrap(room) {
   clearStaleLockedSquares(room);
 }
 
+function findLivingBombAtSquare(room, square) {
+  const bombs = room?.mutatorState?.boardModifiers?.livingBombs;
+  if (!Array.isArray(bombs)) return null;
+  return bombs.find(lb => lb.square === square) || null;
+}
+
+function trackLivingBombMove(room, from, to, piece) {
+  const bombs = room?.mutatorState?.boardModifiers?.livingBombs;
+  if (!Array.isArray(bombs) || !piece) return;
+  for (const lb of bombs) {
+    if (lb.square !== from) continue;
+    if (lb.piece === piece.type && lb.color === piece.color) {
+      lb.square = to;
+    }
+  }
+}
+
+function cleanupLivingBombMarkers(room, board = null) {
+  const ms = room?.mutatorState;
+  if (!ms?.boardModifiers?.livingBombs) return;
+  const boardState = board || getBoardFromRoom(room);
+  ms.boardModifiers.livingBombs = ms.boardModifiers.livingBombs.filter((lb) => {
+    const piece = boardState.get(lb.square);
+    return !!piece && piece.type === lb.piece && piece.color === lb.color;
+  });
+}
+
 function safeMovePiece(room, board, from, to) {
+  const movingPiece = board.get(from);
   let finalSquare = to;
 
   if (isSquareHardBlocked(room, to)) {
@@ -226,7 +254,10 @@ function safeMovePiece(room, board, from, to) {
     movePiece(board, from, to);
   }
 
+  if (movingPiece) trackLivingBombMove(room, from, finalSquare, movingPiece);
+
   const destroyed = triggerSoftRestrictions(room, board, finalSquare);
+  if (destroyed) cleanupLivingBombMarkers(room, board);
   if (destroyed) cleanupLockedSquaresAfterTrap(room);
   return finalSquare;
 }
@@ -262,9 +293,12 @@ function safeSwapSquares(room, board, sq1, sq2) {
   if (p2 && isSquareHardBlocked(room, sq1)) return false;
 
   swapSquares(board, sq1, sq2);
+  if (p1) trackLivingBombMove(room, sq1, sq2, p1);
+  if (p2) trackLivingBombMove(room, sq2, sq1, p2);
 
   const destroyed1 = p1 ? triggerSoftRestrictions(room, board, sq2) : false;
   const destroyed2 = p2 ? triggerSoftRestrictions(room, board, sq1) : false;
+  if (destroyed1 || destroyed2) cleanupLivingBombMarkers(room, board);
   if (destroyed1 || destroyed2) cleanupLockedSquaresAfterTrap(room);
 
   return true;
@@ -1382,17 +1416,26 @@ const hooks = {
       ms.boardModifiers.livingBombs.push({
         square: choiceData,
         piece: piece ? piece.type : null,
+        color: piece ? piece.color : null,
         expiresAtMove,
       });
     },
     onAfterMove(room, playerColor, move) {
-      // Track living bomb as its piece moves; remove if its piece was captured
+      const board = getBoardFromRoom(room);
+      const movingPiece = board.get(move.to);
       const ms = room.mutatorState;
       ms.boardModifiers.livingBombs = ms.boardModifiers.livingBombs.filter(lb => {
-        // Bomb piece was captured -- remove the bomb (don't transfer to attacker)
-        if (lb.square === move.to && lb.square !== move.from) return false;
-        // Bomb piece moved -- track its new square
-        if (lb.square === move.from) lb.square = move.to;
+        // Bomb piece moved by legal move.
+        if (lb.square === move.from && movingPiece && lb.piece === movingPiece.type && lb.color === movingPiece.color) {
+          lb.square = move.to;
+          return true;
+        }
+        // Captures on a bomb square remove the marker unless the same tracked piece arrived there.
+        if (lb.square === move.to && lb.square !== move.from) {
+          const pieceAtDest = board.get(move.to);
+          if (!pieceAtDest) return false;
+          return pieceAtDest.type === lb.piece && pieceAtDest.color === lb.color;
+        }
         return true;
       });
     },
@@ -1403,9 +1446,9 @@ const hooks = {
       const remaining = [];
       for (const lb of ms.boardModifiers.livingBombs) {
         if (lb.expiresAtMove && ms.moveCount >= lb.expiresAtMove) {
-          // Bomb explodes
           const piece = board.get(lb.square);
-          if (piece) {
+          // Explode only when the originally tracked piece metadata still matches.
+          if (piece && piece.type === lb.piece && piece.color === lb.color) {
             const adjacent = getAdjacentSquares(lb.square);
             for (const sq of adjacent) {
               const adj = board.get(sq);

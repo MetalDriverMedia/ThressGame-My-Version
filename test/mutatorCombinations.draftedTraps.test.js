@@ -182,3 +182,25 @@ test('post-drafted state remains coherent for pending/active/locked/modifiers an
   assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'bottomless_pit'), true);
   assertFinalSanity(room, 'test:drafted-traps-coherent');
 });
+
+test('living bomb marker survives drafted swap when opposite swapped piece is trap-destroyed during safeSwapSquares cleanup', () => {
+  const { room, whiteSocket, blackSocket } = createRoom({ roomCode: 'DT-10', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
+  room.mutatorState.boardModifiers.bottomlessPits = [{ square: 'g7' }];
+
+  setPending(room, 'living_bomb');
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'g2' });
+
+  applyDrafted(room, whiteSocket, blackSocket);
+
+  assert.deepEqual(room.chess.get('e1'), { type: 'b', color: 'w' });
+  assert.equal(room.chess.get('g7'), undefined);
+  assert.equal(room.mutatorState.boardModifiers.livingBombs.length, 1);
+  assert.deepEqual(room.mutatorState.boardModifiers.livingBombs[0], {
+    square: 'e1',
+    piece: 'b',
+    color: 'w',
+    expiresAtMove: room.mutatorState.activeRules.find((ar) => ar.rule.id === 'living_bomb').expiresAtMove,
+  });
+  assert.equal(room.status, 'ended');
+  assert.equal(validateRoomIntegrity(room, 'test:drafted-living-bomb-cleanup-current-board'), true);
+});
