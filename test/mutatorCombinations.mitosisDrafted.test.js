@@ -208,3 +208,24 @@ test('no false king destruction during drafted + mitosis interaction', async () 
   assert.equal(roomEvents.some((e) => e.name === 'gameEnded' && e.payload?.reason === 'king-destroyed'), false);
   assertFinalSanity(room, 'test:md-no-false-king-destroyed');
 });
+
+test('mitosis target is nulled immediately when drafted safeSwap moves tracked piece onto a mine', async () => {
+  const { room, gameManager, io, whiteSocket, blackSocket, moveSocketWhite, moveSocketBlack } = createRoom({ roomCode: 'MD-10', fen: BASE_FEN });
+  room.mutatorState.boardModifiers.mines = [{ square: 'e1' }];
+  room.mutatorState.activeRules.push({ rule: getRule('minefield'), turnsLeft: -1, placedBy: 'w' });
+
+  applyMitosis(room, whiteSocket, 'g2');
+  applyDrafted(room, whiteSocket, blackSocket);
+
+  const mitosis = room.mutatorState.activeRules.find((r) => r.rule.id === 'mitosis');
+  assert.equal(mitosis.choiceData.square, null);
+  assert.equal(room.chess.get('e1'), undefined);
+
+  room.chess.put({ type: 'r', color: 'b' }, 'e1');
+  await advanceUntilMitosisExpires({ room, io, gameManager, moveSocketWhite, moveSocketBlack });
+
+  assert.equal(room.chess.get('d1'), undefined);
+  assert.deepEqual(room.chess.get('e1'), { type: 'r', color: 'b' });
+  assert.doesNotThrow(() => new Chess(room.chess.fen()));
+  assert.equal(validateRoomIntegrity(room, 'test:md-immediate-mitosis-cleanup-after-swap-trap'), true);
+});

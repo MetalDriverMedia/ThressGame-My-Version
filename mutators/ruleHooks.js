@@ -306,6 +306,7 @@ function safeMovePiece(room, board, from, to) {
 
   const destroyed = triggerSoftRestrictions(room, board, finalSquare);
   if (destroyed) cleanupLivingBombMarkers(room, board);
+  if (destroyed) cleanupMitosisTargets(room, board);
   if (destroyed) cleanupLockedSquaresAfterTrap(room);
   return finalSquare;
 }
@@ -349,6 +350,7 @@ function safeSwapSquares(room, board, sq1, sq2) {
   const destroyed1 = p1 ? triggerSoftRestrictions(room, board, sq2) : false;
   const destroyed2 = p2 ? triggerSoftRestrictions(room, board, sq1) : false;
   if (destroyed1 || destroyed2) cleanupLivingBombMarkers(room, board);
+  if (destroyed1 || destroyed2) cleanupMitosisTargets(room, board);
   if (destroyed1 || destroyed2) cleanupLockedSquaresAfterTrap(room);
 
   return true;
