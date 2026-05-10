@@ -83,7 +83,7 @@ test('two kids baseline places bishop, records lock, and rejects same-turn bisho
   assert.equal(roomEvents.some((e) => e.name === 'moveApplied'), false);
 });
 
-test('two kids lock clears after successful move and bishop can move later', async () => {
+test('two kids lock clears after successful move; later bishop attempt is blocked by pending mutator choice (not lock)', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, moveSocketWhite, moveSocketBlack } = setupRoom({
     roomCode: 'TKM-2',
     fen: '4k3/8/8/8/8/8/PP2P3/4K2R w - - 0 1',
@@ -101,8 +101,8 @@ test('two kids lock clears after successful move and bishop can move later', asy
   await handleMove(io, moveSocketBlack, gameManager, { from: 'e8', to: 'f8' });
   await handleMove(io, moveSocketWhite, gameManager, { from: 'c3', to: 'a1' });
   const bishopReject = moveSocketWhite.emitted.filter((e) => e.name === 'moveRejected').at(-1);
-  const bishopApplied = roomEvents.find((e) => e.name === 'moveApplied' && e.payload.from === 'c3' && e.payload.to === 'a1');
-  assert.equal(Boolean(bishopApplied) || (bishopReject && bishopReject.payload?.message !== "That piece can't move on the same turn it was placed."), true);
+  assert.ok(bishopReject);
+  assert.equal(bishopReject.payload?.message, 'Choose a rule before making your move.');
 });
 
 test('mitosis baseline stores target, blocks movement, and duplicates once on expiry', async () => {
