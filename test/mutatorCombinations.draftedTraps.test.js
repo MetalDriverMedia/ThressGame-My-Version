@@ -227,8 +227,8 @@ test('drafted swap resolves both trap endpoints deterministically when both land
   assertFinalSanity(room, 'test:drafted-both-endpoints-trapped');
 });
 
-test('mitosis targets are culled if drafted trap cleanup destroys a targeted piece', () => {
-  const { room, whiteSocket, blackSocket } = createRoom({ roomCode: 'DT-12', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
+test('mitosis targets are culled if drafted trap cleanup destroys a targeted piece', async () => {
+  const { room, gameManager, io, whiteSocket, blackSocket, moveSocketWhite, moveSocketBlack } = createRoom({ roomCode: 'DT-12', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
   room.mutatorState.boardModifiers.bottomlessPits = [{ square: 'e1' }];
 
   setPending(room, 'mitosis');
@@ -237,6 +237,30 @@ test('mitosis targets are culled if drafted trap cleanup destroys a targeted pie
   applyDrafted(room, whiteSocket, blackSocket);
 
   assert.equal(room.chess.get('e1'), undefined);
-  assert.deepEqual(room.mutatorState.boardModifiers.mitosisTargets || [], []);
+  const mitosisRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
+  assert.ok(mitosisRule, 'expected mitosis active rule to exist');
+  if (mitosisRule.choiceData === null || typeof mitosisRule.choiceData === 'string') {
+    assert.equal(mitosisRule.choiceData, null);
+  } else {
+    assert.equal(mitosisRule.choiceData.square, null);
+  }
+
+  // Ensure expiry does not duplicate onto an unrelated replacement piece after target cleanup.
+  room.chess.put({ type: 'r', color: 'b' }, 'e1');
+  const moveSequence = [
+    { socket: moveSocketWhite, from: 'g2', to: 'h3' },
+    { socket: moveSocketBlack, from: 'g7', to: 'h6' },
+    { socket: moveSocketWhite, from: 'h3', to: 'g2' },
+    { socket: moveSocketBlack, from: 'h6', to: 'g7' },
+  ];
+  let i = 0;
+  while (i < 4) {
+    const step = moveSequence[i % moveSequence.length];
+    await handleMove(io, step.socket, gameManager, { from: step.from, to: step.to });
+    i += 1;
+  }
+
+  assert.equal(room.chess.get('d1'), undefined);
+  assert.deepEqual(room.chess.get('e1'), { type: 'r', color: 'b' });
   assert.equal(validateRoomIntegrity(room, 'test:drafted-mitosis-cleanup'), true);
 });
