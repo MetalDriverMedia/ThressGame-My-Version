@@ -29,22 +29,26 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
    * Resolve an RPS result once both choices are in.
    */
   async function resolveRPSResult(room, io, gameManager, ms, rps, handleMove, scheduleBotMove, botAutoMutatorResponse) {
-    const outcome = resolveRPS(rps.attackerChoice, rps.defenderChoice);
-    const captureProceeds = outcome !== 'defender';
+    if (room.status !== 'active') return;
+    if (!ms?.pendingRPS || ms.pendingRPS !== rps || ms.rpsResolutionInFlight) return;
+    ms.rpsResolutionInFlight = true;
+    try {
+      const outcome = resolveRPS(rps.attackerChoice, rps.defenderChoice);
+      const captureProceeds = outcome !== 'defender';
 
-    io.to(room.roomCode).emit('rpsResult', {
-      attacker: rps.attacker,
-      defender: rps.defender,
-      attackerChoice: rps.attackerChoice,
-      defenderChoice: rps.defenderChoice,
-      outcome,
-      captureProceeds,
-    });
+      io.to(room.roomCode).emit('rpsResult', {
+        attacker: rps.attacker,
+        defender: rps.defender,
+        attackerChoice: rps.attackerChoice,
+        defenderChoice: rps.defenderChoice,
+        outcome,
+        captureProceeds,
+      });
 
-    if (captureProceeds) {
-      ms.rpsResolved = true;
-      const pendingMove = rps.move;
-      ms.pendingRPS = null;
+      if (captureProceeds) {
+        ms.rpsResolved = true;
+        const pendingMove = rps.move;
+        ms.pendingRPS = null;
 
       const attackerPlayer = room.getPlayer(rps.attacker);
       if (attackerPlayer) {
@@ -58,8 +62,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
           }
         }
       }
-    } else {
-      ms.pendingRPS = null;
+      } else {
+        ms.pendingRPS = null;
 
       // Parry blocked the attack -- attacker loses their turn
       const fen = room.chess.fen();
@@ -80,10 +84,13 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       });
 
       // Restart clock for the new player's turn
-      if (room.status === 'active') {
-        turnClock.startClock(room, io);
-        scheduleBotMove(room, io, gameManager, handleMove, botAutoMutatorResponse);
+        if (room.status === 'active') {
+          turnClock.startClock(room, io);
+          scheduleBotMove(room, io, gameManager, handleMove, botAutoMutatorResponse);
+        }
       }
+    } finally {
+      ms.rpsResolutionInFlight = false;
     }
   }
 
@@ -857,15 +864,20 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       if (!VALID_RPS_CHOICES.includes(choice)) return;
 
       const room = gameManager.getRoomForSocket(socket.id);
-      if (!room || !room.mutatorState || !room.mutatorState.pendingRPS) return;
+      if (!room || room.status !== 'active' || !room.mutatorState || !room.mutatorState.pendingRPS) return;
       const rps = room.mutatorState.pendingRPS;
+      if (room.mutatorState.rpsResolutionInFlight) return;
       const player = room.getPlayerBySocket(socket.id);
       if (!player) return;
 
       if (player.color === rps.attacker) {
+        if (rps.attackerChoice) return;
         rps.attackerChoice = choice;
       } else if (player.color === rps.defender) {
+        if (rps.defenderChoice) return;
         rps.defenderChoice = choice;
+      } else {
+        return;
       }
 
       // Both chosen? Resolve via shared helper
