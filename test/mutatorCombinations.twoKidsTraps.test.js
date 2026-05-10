@@ -83,7 +83,7 @@ test('baseline: two kids places bishop, consumes pawns, records lock, and clears
   assert.equal(room.chess.get('d2'), undefined);
   assert.equal(room.chess.get('f2'), undefined);
   assert.deepEqual(room.chess.get('e3'), { type: 'b', color: 'w' });
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'e3' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['e3']);
   assert.equal(room.mutatorState.pendingAction, null);
   assert.equal(room.mutatorState.pendingSecondAction, null);
   assertKingCounts(room);
@@ -126,7 +126,7 @@ test('baseline: minefield destroys a non-king moving onto mine and consumes mine
   assert.doesNotThrow(() => validateRoomIntegrity(room, 'test:minefield-baseline'));
 });
 
-test('combination: two kids places bishop on bottomless pit, bishop is destroyed immediately, lock entry remains stale, pit persists', async () => {
+test('combination: two kids places bishop on bottomless pit, bishop is destroyed immediately, stale lock is cleaned up, pit persists', async () => {
   const { room, gameManager, io, whiteSocket, moveSocketWhite, moveSocketBlack, roomEvents } = setupRoom({
     roomCode: 'TKT-COMBO-1',
     fen: '4k3/8/8/8/8/8/3P1P2/4K2R w - - 0 1',
@@ -139,7 +139,7 @@ test('combination: two kids places bishop on bottomless pit, bishop is destroyed
   whiteSocket.trigger('mutatorActionResponse', { targets: 'e3' });
 
   assert.equal(room.chess.get('e3'), undefined);
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'e3' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['e3']);
   assert.deepEqual(room.mutatorState.boardModifiers.bottomlessPits.map((p) => p.square), ['e3']);
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'e3', to: 'f4' });
@@ -162,7 +162,7 @@ test('combination: two kids places bishop on bottomless pit, bishop is destroyed
   assert.doesNotThrow(() => validateRoomIntegrity(room, 'test:two-kids-bottomless-pit-combo'));
 });
 
-test('combination: two kids places bishop on minefield, bishop is destroyed immediately, stale lock remains, mine is consumed', async () => {
+test('combination: two kids places bishop on minefield, bishop is destroyed immediately, stale lock is cleaned up, mine is consumed', async () => {
   const { room, gameManager, io, whiteSocket, moveSocketWhite, moveSocketBlack, roomEvents } = setupRoom({
     roomCode: 'TKT-COMBO-2',
     fen: '4k3/8/8/8/8/8/3P1P2/4K2R w - - 0 1',
@@ -176,7 +176,7 @@ test('combination: two kids places bishop on minefield, bishop is destroyed imme
   whiteSocket.trigger('mutatorActionResponse', { targets: 'e3' });
 
   assert.equal(room.chess.get('e3'), undefined);
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'e3' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['e3']);
   assert.deepEqual(room.mutatorState.boardModifiers.mines.map((m) => m.square), []);
   assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), true);
 

@@ -13,6 +13,7 @@ const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } 
 const turnClock = require('../utils/turnClock');
 const { validateRoomIntegrity } = require('../utils/roomIntegrity');
 const { isMoveAllowed } = require('../mutators/legalMoveEngine');
+const { clearStaleLockedSquares } = require('../mutators/lockedSquares');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -123,6 +124,7 @@ async function handleMove(io, socket, gameManager, data) {
   }
 
   // Block moves from squares locked this turn (e.g. a bishop just placed by Two Kids in a Trenchcoat)
+  clearStaleLockedSquares(room);
   if (room.mutatorState?.boardModifiers?.lockedSquares?.some(ls => ls.square === from)) {
     socket.emit('moveRejected', { message: "That piece can't move on the same turn it was placed." });
     return;

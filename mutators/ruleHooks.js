@@ -822,8 +822,10 @@ const hooks = {
         // teleport an attacker into a one-shot king capture
         const ms = room.mutatorState;
         if (!ms.boardModifiers.lockedSquares) ms.boardModifiers.lockedSquares = [];
-        ms.boardModifiers.lockedSquares.push({ square: sq1 });
-        ms.boardModifiers.lockedSquares.push({ square: sq2 });
+        const p1 = board.get(sq1);
+        const p2 = board.get(sq2);
+        if (p1) ms.boardModifiers.lockedSquares.push({ square: sq1, piece: p1.type, color: p1.color });
+        if (p2) ms.boardModifiers.lockedSquares.push({ square: sq2, piece: p2.type, color: p2.color });
       }
       syncChessFromBoard(room, board);
     },
@@ -891,7 +893,7 @@ const hooks = {
         // Lock the new bishop -- chooser can't move it on this same turn
         const ms = room.mutatorState;
         if (!ms.boardModifiers.lockedSquares) ms.boardModifiers.lockedSquares = [];
-        ms.boardModifiers.lockedSquares.push({ square: bishopSquare });
+        ms.boardModifiers.lockedSquares.push({ square: bishopSquare, piece: 'b', color: chooserColor });
       }
       syncChessFromBoard(room, board);
     },

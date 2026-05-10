@@ -75,7 +75,7 @@ test('two kids baseline places bishop, records lock, and rejects same-turn bisho
   assert.equal(room.chess.get('a2'), undefined);
   assert.equal(room.chess.get('b2'), undefined);
   assert.deepEqual(room.chess.get('c3'), { type: 'b', color: 'w' });
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'c3' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['c3']);
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'c3', to: 'd4' });
 
