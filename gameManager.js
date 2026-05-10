@@ -217,9 +217,10 @@ class GameManager {
       .filter(r => r.status === 'waiting' || r.status === 'active');
   }
 
-  deleteRoom(roomCode) {
+  deleteRoom(roomCode, options = {}) {
     const room = this.rooms.get(roomCode);
-    if (!room) return;
+    if (!room) return false;
+    if (room.status === 'active' && !options.force) return false;
 
     // Cleanup socket/token mappings
     for (const player of [room.white, room.black]) {
@@ -235,6 +236,7 @@ class GameManager {
     }
 
     this.rooms.delete(roomCode);
+    return true;
   }
 
   cleanupOldRooms() {
