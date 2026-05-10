@@ -110,15 +110,19 @@ test('parry attacker win on bomb square proceeds capture and preserves current l
   whiteSocket.trigger('mutatorActionResponse', { targets: 'd2' });
 
   await handleMove(io, whiteSocket, gameManager, { from: 'd1', to: 'd2' });
+  const livingBombCountBeforeResolution = room.mutatorState.boardModifiers.livingBombs.length;
+  const rpsResultsBeforeResolution = roomEvents.filter((e) => e.name === 'rpsResult').length;
+  const moveAppliedBeforeResolution = roomEvents.filter((e) => e.name === 'moveApplied').length;
+
   whiteSocket.trigger('rpsChoice', { choice: 'rock' });
   blackSocket.trigger('rpsChoice', { choice: 'scissors' });
 
   assert.equal(room.mutatorState.pendingRPS, null);
   assert.equal(room.chess.get('d1'), undefined);
   assert.equal(room.chess.get('d2').type, 'q');
-  assert.equal(room.mutatorState.boardModifiers.livingBombs.length, 1);
+  assert.equal(room.mutatorState.boardModifiers.livingBombs.length, livingBombCountBeforeResolution);
   assert.equal(room.mutatorState.boardModifiers.livingBombs[0].square, 'd2');
-  assert.equal(roomEvents.filter((e) => e.name === 'rpsResult').length, 1);
-  assert.equal(roomEvents.filter((e) => e.name === 'moveApplied').length, 1);
+  assert.equal(roomEvents.filter((e) => e.name === 'rpsResult').length, rpsResultsBeforeResolution + 1);
+  assert.equal(roomEvents.filter((e) => e.name === 'moveApplied').length, moveAppliedBeforeResolution + 1);
   assert.equal(validateRoomIntegrity(room, 'test:parry-lb-attacker-win'), true);
 });
