@@ -60,7 +60,7 @@ test('checkMutatorDeadlock still works through delegated legal move engine path'
   assert.ok(events.includes('gameEnded'));
 });
 
-test('syntheticMovesBeforeRestrictions option applies restrictions to synthetic moves', () => {
+test('default and syntheticMovesBeforeRestrictions both apply restrictions to synthetic moves', () => {
   const room = new GameRoom('TST05');
   room.chess.load('4k3/8/8/8/8/8/8/1N2K3 w - - 0 1');
   room.mutatorState = createMutatorState();
@@ -70,7 +70,7 @@ test('syntheticMovesBeforeRestrictions option applies restrictions to synthetic 
   const defaultMoves = getEffectiveLegalMoves(room, 'w');
   const preRestrictionMoves = getEffectiveLegalMoves(room, 'w', { syntheticMovesBeforeRestrictions: true });
 
-  assert.ok(defaultMoves.some(m => m.from === 'b1' && m.to === 'b2'));
+  assert.equal(defaultMoves.length, 0);
   assert.equal(preRestrictionMoves.length, 0);
 });
 
@@ -139,7 +139,7 @@ test('isMoveAllowed respects hobbit_battle restriction', () => {
   });
 });
 
-test('isMoveAllowed supports syntheticMovesBeforeRestrictions option', () => {
+test('isMoveAllowed remains aligned between default and syntheticMovesBeforeRestrictions option', () => {
   const room = new GameRoom('TST11');
   room.chess.load('4k3/8/8/8/8/8/8/1N2K3 w - - 0 1');
   room.mutatorState = createMutatorState();
@@ -151,6 +151,6 @@ test('isMoveAllowed supports syntheticMovesBeforeRestrictions option', () => {
     syntheticMovesBeforeRestrictions: true,
   });
 
-  assert.equal(defaultResult.allowed, true);
+  assert.equal(defaultResult.allowed, false);
   assert.equal(preRestrictionResult.allowed, false);
 });

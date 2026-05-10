@@ -39,7 +39,7 @@ test('bot move pool respects hobbit_battle restriction via legalMoveEngine', () 
   assert.equal(moves.length, 0);
 });
 
-test('bot move pool uses synthetic-before-restrictions behavior', () => {
+test('bot move pool matches default and synthetic-before-restrictions legal move behavior', () => {
   const room = new GameRoom('BOT04');
   room.chess.load('4k3/8/8/8/8/8/8/1N2K3 w - - 0 1');
   room.mutatorState = createMutatorState();
@@ -47,9 +47,11 @@ test('bot move pool uses synthetic-before-restrictions behavior', () => {
   room.mutatorState.activeRules.push({ rule: { id: 'hobbit_battle' } });
 
   const defaultMoves = getEffectiveLegalMoves(room, 'w');
+  const preRestrictionMoves = getEffectiveLegalMoves(room, 'w', { syntheticMovesBeforeRestrictions: true });
   const botMoves = getBotMovePool(room, 'w');
 
-  assert.ok(defaultMoves.some(m => m.from === 'b1' && m.to === 'b2'));
+  assert.equal(defaultMoves.length, 0);
+  assert.equal(preRestrictionMoves.length, 0);
   assert.equal(botMoves.length, 0);
 });
 
