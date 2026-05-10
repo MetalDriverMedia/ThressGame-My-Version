@@ -139,7 +139,7 @@ test('manual risk it rook + minefield consumes chooser mine and allows opponent 
   assert.equal(roomEvents.some((e) => e.name === 'gameEnded'), false);
   assert.equal(room._riskItRookPending, undefined);
   assert.equal(room.mutatorState.pendingCoinFlip, null);
-  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), true);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
 });
 
 test('manual risk it rook + minefield consumes opponent mine while chooser rook survives', () => {
@@ -199,7 +199,7 @@ test('auto risk it rook + minefield resolves immediately with no manual prompts 
   assert.deepEqual(room.chess.get('a1'), { type: 'r', color: 'b' });
   assert.equal(roomEvents.some((e) => e.name === 'riskItRookFlipPrompt'), false);
   assert.deepEqual(getMineSquares(room), []);
-  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), true);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assert.equal(room._riskItRookPending, undefined);
   assert.equal(room.mutatorState.pendingCoinFlip, null);
   assert.equal(room.status, 'active');

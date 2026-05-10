@@ -5,9 +5,8 @@ const { scheduleRoomDeletion, emitGameEnded, checkKingDestroyed, checkMutatorDea
 const {
   shouldTriggerChoice, generateRuleOptions, checkExpiredRules,
   incrementMoveCount, serializeMutatorState, isRuleActive,
-  removePersistentRule,
 } = require('../mutators/mutatorEngine');
-const { executeHook, getHooks, getWrapMoves, getCustomMoves, getBoardFromRoom, syncChessFromBoard, triggerSoftRestrictions, destroyPiece } = require('../mutators/ruleHooks');
+const { executeHook, getHooks, getWrapMoves, getCustomMoves, getBoardFromRoom, syncChessFromBoard, triggerSoftRestrictions, destroyPiece, cleanupMinefieldRule } = require('../mutators/ruleHooks');
 const { isKingInCheck, wouldLeaveKingInCheck, getPseudoLegalDestinations } = require('../mutators/checkDetector');
 const { fenToBoard, offsetSquare, isSquareHardBlocked, findNearestValidSquare } = require('../mutators/boardUtils');
 const turnClock = require('../utils/turnClock');
@@ -335,9 +334,7 @@ async function handleMove(io, socket, gameManager, data) {
         if (trapType === 'mine' && piece.type === 'k') {
           // Kings survive minefields, but mines are still consumed.
           ms.boardModifiers.mines.splice(trapIndex, 1);
-          if (ms.boardModifiers.mines.length === 0) {
-            removePersistentRule(ms, 'minefield');
-          }
+          cleanupMinefieldRule(room);
         } else {
           destroyPiece(room, board, dest, { allowKingDestruction: trapType === 'pit' });
           syncChessFromBoard(room, board);
@@ -345,9 +342,7 @@ async function handleMove(io, socket, gameManager, data) {
 
           if (trapType === 'mine') {
             ms.boardModifiers.mines.splice(trapIndex, 1);
-            if (ms.boardModifiers.mines.length === 0) {
-              removePersistentRule(ms, 'minefield');
-            }
+            cleanupMinefieldRule(room);
           }
         }
       }
@@ -375,9 +370,7 @@ async function handleMove(io, socket, gameManager, data) {
           clearStaleLockedSquares(room);
           if (castleTrap === 'mine') {
             ms.boardModifiers.mines.splice(castleTrapIdx, 1);
-            if (ms.boardModifiers.mines.length === 0) {
-              removePersistentRule(ms, 'minefield');
-            }
+            cleanupMinefieldRule(room);
           }
         }
       }

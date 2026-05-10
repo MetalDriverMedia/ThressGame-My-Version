@@ -119,7 +119,7 @@ test('baseline: minefield destroys a non-king moving onto mine and consumes mine
 
   assert.equal(room.chess.get('a2'), undefined);
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
-  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), true);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assert.equal(room.status, 'active');
   assert.equal(roomEvents.some((e) => e.name === 'gameEnded' && e.payload?.reason === 'king-destroyed'), false);
   assert.doesNotThrow(() => new Chess(room.chess.fen()));
@@ -178,7 +178,7 @@ test('combination: two kids places bishop on minefield, bishop is destroyed imme
   assert.equal(room.chess.get('e3'), undefined);
   assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, []);
   assert.deepEqual(room.mutatorState.boardModifiers.mines.map((m) => m.square), []);
-  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), true);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'e3', to: 'f4' });
   const reject = moveSocketWhite.emitted.find((e) => e.name === 'moveRejected');
