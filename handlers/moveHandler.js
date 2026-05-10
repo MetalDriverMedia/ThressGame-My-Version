@@ -13,6 +13,7 @@ const turnClock = require('../utils/turnClock');
 const { validateRoomIntegrity } = require('../utils/roomIntegrity');
 const { isMoveAllowed } = require('../mutators/legalMoveEngine');
 const { clearStaleLockedSquares } = require('../mutators/lockedSquares');
+const { getMovePendingBlocker } = require('../utils/pendingState');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -100,26 +101,11 @@ async function handleMove(io, socket, gameManager, data) {
     return;
   }
 
-  // Block moves if a mutator choice is pending for this player
-  if (room.mutatorState && room.mutatorState.pendingChoice) {
-    if (room.mutatorState.pendingChoice.chooser === player.color) {
-      socket.emit('moveRejected', { message: 'Choose a rule before making your move.' });
-      return;
-    }
-  }
-  if (room.mutatorState && (room.mutatorState.pendingAction || room.mutatorState.pendingSecondAction)) {
-    socket.emit('moveRejected', { message: 'Complete the rule selection first.' });
+  // Block moves in deterministic pending-state priority order.
+  const pendingBlocker = getMovePendingBlocker(room, player.color);
+  if (pendingBlocker) {
+    socket.emit('moveRejected', { message: pendingBlocker.message });
     return;
-  }
-  if (room.mutatorState && room.mutatorState.pendingRPS) {
-    socket.emit('moveRejected', { message: 'Waiting for RPS resolution.' });
-    return;
-  }
-  if (room.mutatorState && room.mutatorState.pendingCoinFlip) {
-    if (room.mutatorState.pendingCoinFlip.forPlayer === player.color) {
-      socket.emit('moveRejected', { message: 'Flip the coin first!' });
-      return;
-    }
   }
 
   // Block moves from squares locked this turn (e.g. a bishop just placed by Two Kids in a Trenchcoat)

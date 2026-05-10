@@ -6,6 +6,7 @@ const { getEffectiveLegalMoves: getEffectiveLegalMovesFromEngine } = require('..
 const { fenToBoard } = require('../mutators/boardUtils');
 const { recordWin, recordLoss, recordDraw, getTop } = require('./scoreboard');
 const turnClock = require('./turnClock');
+const { hasGlobalPendingBlocker } = require('./pendingState');
 
 const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -149,6 +150,10 @@ function checkKingDestroyed(room, io, gameManager) {
 function triggerCoinFlip(room, io, forColor) {
   const ms = room.mutatorState;
   if (!ms) return;
+
+  // Do not prompt/resolve All on Red coin flips while other global pending
+  // mutator interactions are unresolved.
+  if (hasGlobalPendingBlocker(room)) return;
 
   // Skip if a flip already happened this move (prevents double-flip when rule choice
   // and post-move coin flip both fire in the same turn)

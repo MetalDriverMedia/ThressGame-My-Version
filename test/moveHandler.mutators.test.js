@@ -224,3 +224,43 @@ test('safeMovePiece path destroys king on bottomless pit (shared soft-restrictio
   assert.equal(finalSquare, 'e2');
   assert.equal(board.get('e2'), undefined);
 });
+
+test('pendingChoice blocks chooser but not opponent', async () => {
+  const gameManager = new GameManager();
+  const room = createActiveRoomWithPlayers('MVT-PEND-1');
+  room.mutatorState.pendingChoice = { chooser: 'w', options: [{ id: 'parry' }] };
+  room.chess.load('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+  gameManager.rooms.set(room.roomCode, room);
+  gameManager.setSocketRoom('sock-w', room.roomCode);
+
+  const whiteSocket = createSocket('sock-w');
+  const { io } = createIoRecorder();
+  await handleMove(io, whiteSocket, gameManager, { from: 'e2', to: 'e4' });
+
+  assert.deepEqual(whiteSocket.emitted[0], { name: 'moveRejected', payload: { message: 'Choose a rule before making your move.' } });
+  assert.ok(room.mutatorState.pendingChoice);
+
+  room.chess.load('4k3/8/8/8/8/8/4p3/4K3 b - - 0 1');
+  gameManager.setSocketRoom('sock-b', room.roomCode);
+  const blackSocket = createSocket('sock-b');
+  await handleMove(io, blackSocket, gameManager, { from: 'e2', to: 'e1', promotion: 'q' });
+  assert.equal(blackSocket.emitted.some(e => e.name === 'moveRejected' && e.payload?.message === 'Choose a rule before making your move.'), false);
+});
+
+test('pendingAction and pendingSecondAction block moves and are not cleared on rejection', async () => {
+  const gameManager = new GameManager();
+  const room = createActiveRoomWithPlayers('MVT-PEND-2');
+  room.chess.load('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+  room.mutatorState.pendingAction = { ruleId: 'drafted', actionType: 'square', forPlayer: 'w' };
+  room.mutatorState.pendingSecondAction = { ruleId: 'drafted', actionType: 'square', forPlayer: 'b', firstChoiceData: 'e4' };
+  gameManager.rooms.set(room.roomCode, room);
+  gameManager.setSocketRoom('sock-w', room.roomCode);
+
+  const socket = createSocket('sock-w');
+  const { io } = createIoRecorder();
+  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+
+  assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { message: 'Complete the rule selection first.' } });
+  assert.ok(room.mutatorState.pendingAction);
+  assert.ok(room.mutatorState.pendingSecondAction);
+});
