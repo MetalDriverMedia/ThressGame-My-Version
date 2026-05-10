@@ -229,12 +229,12 @@ function trackLivingBombMove(room, from, to, piece) {
   }
 }
 
-function cleanupLivingBombMarkers(room) {
+function cleanupLivingBombMarkers(room, board = null) {
   const ms = room?.mutatorState;
   if (!ms?.boardModifiers?.livingBombs) return;
-  const board = getBoardFromRoom(room);
+  const boardState = board || getBoardFromRoom(room);
   ms.boardModifiers.livingBombs = ms.boardModifiers.livingBombs.filter((lb) => {
-    const piece = board.get(lb.square);
+    const piece = boardState.get(lb.square);
     return !!piece && piece.type === lb.piece && piece.color === lb.color;
   });
 }
@@ -257,7 +257,7 @@ function safeMovePiece(room, board, from, to) {
   if (movingPiece) trackLivingBombMove(room, from, finalSquare, movingPiece);
 
   const destroyed = triggerSoftRestrictions(room, board, finalSquare);
-  if (destroyed) cleanupLivingBombMarkers(room);
+  if (destroyed) cleanupLivingBombMarkers(room, board);
   if (destroyed) cleanupLockedSquaresAfterTrap(room);
   return finalSquare;
 }
@@ -298,7 +298,7 @@ function safeSwapSquares(room, board, sq1, sq2) {
 
   const destroyed1 = p1 ? triggerSoftRestrictions(room, board, sq2) : false;
   const destroyed2 = p2 ? triggerSoftRestrictions(room, board, sq1) : false;
-  if (destroyed1 || destroyed2) cleanupLivingBombMarkers(room);
+  if (destroyed1 || destroyed2) cleanupLivingBombMarkers(room, board);
   if (destroyed1 || destroyed2) cleanupLockedSquaresAfterTrap(room);
 
   return true;
