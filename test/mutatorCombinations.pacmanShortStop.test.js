@@ -168,7 +168,7 @@ test('pacman_style + short_stop currently exposes wrap capture in effective move
   assert.equal(combined.room.chess.get('h4').type, 'p');
 });
 
-test('effective legal move pool ordering sanity aligns with handleMove behavior for pacman_style + short_stop', () => {
+test('effective legal move pool ordering sanity documents default pool vs handleMove mismatch', () => {
   const fen = '4k3/8/8/8/8/8/N7/4K3 w - - 0 1';
 
   const pacmanOnly = setupRoom({ roomCode: 'PAC-SS-POOL-1', fen, activeRuleIds: ['pacman_style'] });
@@ -178,7 +178,7 @@ test('effective legal move pool ordering sanity aligns with handleMove behavior 
   assert.equal(getEffectiveLegalMoves(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), true);
 });
 
-test('bot move pool sanity matches effective legal moves for pacman_style + short_stop wrap filtering', () => {
+test('bot move pool sanity matches synthetic-before-restrictions legal move filtering', () => {
   const fen = '4k3/8/8/8/8/8/N7/4K3 w - - 0 1';
   const pacmanOnly = setupRoom({ roomCode: 'PAC-SS-BOT-1', fen, activeRuleIds: ['pacman_style'] });
   const combined = setupRoom({ roomCode: 'PAC-SS-BOT-2', fen, activeRuleIds: ['pacman_style', 'short_stop'] });
