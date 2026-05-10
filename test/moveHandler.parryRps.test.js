@@ -13,6 +13,7 @@ const {
 
 
 const roomsToCleanup = new Set();
+const settle = () => new Promise(resolve => setImmediate(resolve));
 
 function createTrackedParryRoom(roomCode) {
   const room = createParryCaptureSetup(roomCode);
@@ -48,6 +49,9 @@ test('parry RPS resolution: attacker win proceeds capture via socket rpsChoice h
   const result = await handleMove(io, whiteSocket, gameManager, { from: 'd1', to: 'd2' });
   assert.deepEqual(result, { status: 'deferred', reason: 'pendingRPS', pending: 'pendingRPS' });
   assert.ok(room.mutatorState.pendingRPS);
+  assert.equal(room.chess.get('d1').type, 'q');
+  assert.equal(room.chess.get('d2').type, 'p');
+  assert.deepEqual(Object.keys(room.mutatorState.pendingRPS).sort(), ['attacker', 'attackerChoice', 'defender', 'defenderChoice', 'move']);
 
   whiteSocket.trigger('rpsChoice', { choice: 'rock' });
   assert.ok(room.mutatorState.pendingRPS);
@@ -184,4 +188,63 @@ test('parry RPS resolution: invalid or unrelated rpsChoice is ignored', async ()
   assert.equal(room.mutatorState.pendingRPS.attackerChoice, null);
   assert.equal(room.mutatorState.pendingRPS.defenderChoice, null);
   assert.equal(roomEvents.some(e => e.name === 'rpsResult'), false);
+});
+
+test('parry RPS resolution: duplicate and late choices do not re-resolve or overwrite', async () => {
+  const gameManager = new GameManager();
+  const room = createTrackedParryRoom('MVT37');
+  gameManager.rooms.set(room.roomCode, room);
+  gameManager.setSocketRoom('sock-w', room.roomCode);
+  gameManager.setSocketRoom('sock-b', room.roomCode);
+
+  const whiteSocket = createRegisteredSocket('sock-w');
+  const blackSocket = createRegisteredSocket('sock-b');
+  const { io, roomEvents } = createIoRecorder();
+
+  const handlers = createMutatorHandlers({ handleMove, scheduleBotMove: () => {}, generateBotTarget: () => null });
+  handlers.registerSocketHandlers(whiteSocket, io, gameManager);
+  handlers.registerSocketHandlers(blackSocket, io, gameManager);
+
+  await handleMove(io, whiteSocket, gameManager, { from: 'd1', to: 'd2' });
+  whiteSocket.trigger('rpsChoice', { choice: 'rock' });
+  whiteSocket.trigger('rpsChoice', { choice: 'paper' });
+  assert.equal(room.mutatorState.pendingRPS.attackerChoice, 'rock');
+
+  blackSocket.trigger('rpsChoice', { choice: 'scissors' });
+  await settle();
+  blackSocket.trigger('rpsChoice', { choice: 'paper' });
+  whiteSocket.trigger('rpsChoice', { choice: 'rock' });
+  await settle();
+
+  assert.equal(roomEvents.filter(e => e.name === 'rpsResult').length, 1);
+  assert.equal(room.mutatorState.pendingRPS, null);
+  assert.notEqual(room.mutatorState.rpsResolutionInFlight, true);
+});
+
+test('parry RPS resolution: rpsChoice after game end is ignored', async () => {
+  const gameManager = new GameManager();
+  const room = createTrackedParryRoom('MVT38');
+  gameManager.rooms.set(room.roomCode, room);
+  gameManager.setSocketRoom('sock-w', room.roomCode);
+  gameManager.setSocketRoom('sock-b', room.roomCode);
+
+  const whiteSocket = createRegisteredSocket('sock-w');
+  const blackSocket = createRegisteredSocket('sock-b');
+  const { io, roomEvents } = createIoRecorder();
+
+  const handlers = createMutatorHandlers({ handleMove, scheduleBotMove: () => {}, generateBotTarget: () => null });
+  handlers.registerSocketHandlers(whiteSocket, io, gameManager);
+  handlers.registerSocketHandlers(blackSocket, io, gameManager);
+
+  await handleMove(io, whiteSocket, gameManager, { from: 'd1', to: 'd2' });
+  room.status = 'ended';
+  const fenBefore = room.chess.fen();
+
+  whiteSocket.trigger('rpsChoice', { choice: 'rock' });
+  blackSocket.trigger('rpsChoice', { choice: 'scissors' });
+
+  assert.equal(room.chess.fen(), fenBefore);
+  assert.ok(room.mutatorState.pendingRPS);
+  assert.equal(roomEvents.some(e => e.name === 'rpsResult'), false);
+  assert.equal(roomEvents.some(e => e.name === 'moveApplied'), false);
 });
