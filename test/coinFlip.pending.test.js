@@ -246,3 +246,17 @@ test('coinFlipChoice validates payload and enforces pending player before applyi
   assert.deepEqual(room.mutatorState.coinFlipResult, { result: 'tails', moveCount: room.mutatorState.moveCount });
   assert.ok(roomEvents.find((e) => e.name === 'coinFlipResult' && e.payload.result === 'tails'));
 });
+
+test('triggerCoinFlip does not run while pendingAction or pendingRPS is unresolved', () => {
+  const { room, io, roomEvents } = setupCoinFlipRoom({ roomCode: 'CFLP-PEND-BLOCK', manualCoinFlip: true });
+  room.mutatorState.pendingAction = { ruleId: 'drafted', actionType: 'square', forPlayer: 'w' };
+  triggerCoinFlip(room, io, 'w');
+  assert.equal(room.mutatorState.pendingCoinFlip, null);
+  assert.equal(roomEvents.some((e) => e.name === 'coinFlipPrompt' || e.name === 'coinFlip' || e.name === 'coinFlipResult'), false);
+
+  room.mutatorState.pendingAction = null;
+  room.mutatorState.pendingRPS = { attacker: 'w', defender: 'b', move: { from: 'e2', to: 'e4', promotion: null } };
+  triggerCoinFlip(room, io, 'w');
+  assert.equal(room.mutatorState.pendingCoinFlip, null);
+  assert.equal(roomEvents.some((e) => e.name === 'coinFlipPrompt' || e.name === 'coinFlip' || e.name === 'coinFlipResult'), false);
+});
