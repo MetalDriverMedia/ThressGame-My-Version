@@ -252,14 +252,35 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
     id: bot.socketId,
     emit: () => {},
   };
+  const beforeSig = JSON.stringify({
+    fen: room.chess.fen(),
+    turn: room.chess.turn(),
+    status: room.status,
+    pending: !!(room.mutatorState && (room.mutatorState.pendingRPS || room.mutatorState.pendingChoice || room.mutatorState.pendingAction || room.mutatorState.pendingSecondAction || room.mutatorState.pendingCoinFlip)),
+  });
 
   try {
-    await handleMoveFn(io, fakeSocket, gameManager, {
+    const moveResult = await handleMoveFn(io, fakeSocket, gameManager, {
       from: selectedMove.from,
       to: selectedMove.to,
       promotion: selectedMove.promotion || undefined,
     });
+    const afterSig = JSON.stringify({
+      fen: room.chess.fen(),
+      turn: room.chess.turn(),
+      status: room.status,
+      pending: !!(room.mutatorState && (room.mutatorState.pendingRPS || room.mutatorState.pendingChoice || room.mutatorState.pendingAction || room.mutatorState.pendingSecondAction || room.mutatorState.pendingCoinFlip)),
+    });
 
+    const progressed = beforeSig !== afterSig || !!(moveResult && (moveResult.applied || moveResult.pending));
+    if (!progressed) {
+      const staleKey = `${bot.color}|${selectedMove.from}|${selectedMove.to}|${beforeSig}`;
+      if (room._botStaleAttempt === staleKey) return;
+      room._botStaleAttempt = staleKey;
+      return;
+    }
+
+    room._botStaleAttempt = null;
     console.log(`[botManager] Bot ${bot.name} moved: ${selectedMove.from}->${selectedMove.to}`);
 
     // Handle any mutator auto-responses (RPS, target selection, etc.)

@@ -329,14 +329,22 @@ async function handleMove(io, socket, gameManager, data) {
     if (trapType) {
       const board = getBoardFromRoom(room);
       const piece = board.get(dest);
-      if (piece && piece.type !== 'k') {
-        destroyPiece(room, board, dest);
-        syncChessFromBoard(room, board);
-
-        if (trapType === 'mine') {
+      if (piece) {
+        if (trapType === 'mine' && piece.type === 'k') {
+          // Kings survive minefields, but mines are still consumed.
           ms.boardModifiers.mines.splice(trapIndex, 1);
           if (ms.boardModifiers.mines.length === 0) {
             removePersistentRule(ms, 'minefield');
+          }
+        } else {
+          destroyPiece(room, board, dest, { allowKingDestruction: trapType === 'pit' });
+          syncChessFromBoard(room, board);
+
+          if (trapType === 'mine') {
+            ms.boardModifiers.mines.splice(trapIndex, 1);
+            if (ms.boardModifiers.mines.length === 0) {
+              removePersistentRule(ms, 'minefield');
+            }
           }
         }
       }
@@ -359,7 +367,7 @@ async function handleMove(io, socket, gameManager, data) {
       if (castleTrap) {
         const board = getBoardFromRoom(room);
         if (board.get(rookDest)) {
-          destroyPiece(room, board, rookDest);
+          destroyPiece(room, board, rookDest, { allowKingDestruction: castleTrap === 'pit' });
           syncChessFromBoard(room, board);
           if (castleTrap === 'mine') {
             ms.boardModifiers.mines.splice(castleTrapIdx, 1);
@@ -370,6 +378,11 @@ async function handleMove(io, socket, gameManager, data) {
         }
       }
     }
+  }
+
+  // If a king was removed by a destination trap, end immediately through king-destruction flow.
+  if (checkKingDestroyed(room, io, gameManager)) {
+    return;
   }
 
   // Record move in history

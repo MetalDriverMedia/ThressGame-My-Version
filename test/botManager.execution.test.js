@@ -148,3 +148,44 @@ test('performBotMove defers when pendingChoice exists (no immediate handleMove c
 
   assert.equal(calls, 0);
 });
+
+test('performBotMove does not log success or reschedule on rejected stale move', async () => {
+  const gameManager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = createActiveBotRoom({ roomCode: 'BOTEX7', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, room);
+
+  let scheduled = 0;
+  const originalSetTimeout = global.setTimeout;
+  const originalLog = console.log;
+  const logs = [];
+  try {
+    global.setTimeout = () => { scheduled++; return 1; };
+    console.log = (...args) => logs.push(args.join(' '));
+    await performBotMove(room, io, gameManager, async () => ({ applied: false, rejected: true }));
+  } finally {
+    global.setTimeout = originalSetTimeout;
+    console.log = originalLog;
+  }
+
+  assert.equal(scheduled, 0);
+  assert.equal(logs.some(l => l.includes('moved:')), false);
+});
+
+test('performBotMove stale rejection guard prevents repeated same-attempt loop', async () => {
+  const gameManager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = createActiveBotRoom({ roomCode: 'BOTEX8', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, room);
+
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    await performBotMove(room, io, gameManager, async () => ({ applied: false, rejected: true }));
+    const first = room._botStaleAttempt;
+    await performBotMove(room, io, gameManager, async () => ({ applied: false, rejected: true }));
+    assert.equal(room._botStaleAttempt, first);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
