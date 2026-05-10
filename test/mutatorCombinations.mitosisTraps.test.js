@@ -150,7 +150,7 @@ test('combination: mitosis with bottomless pit at deterministic candidate produc
   assertFinalSanity(room);
 });
 
-test('combination: mitosis with minefield at deterministic candidate produces no duplicate and mine persists', async () => {
+test('combination: mitosis with minefield at deterministic candidate produces no duplicate, consumes mine, and keeps minefield rule active', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, moveSocketWhite, moveSocketBlack } = setupRoom({ roomCode: 'MT-6', fen: '4k3/8/8/3N4/8/8/8/4K2R w - - 0 1' });
   room.mutatorState.boardModifiers.mines = [{ square: 'c4' }];
   room.mutatorState.activeRules.push({ rule: getRule('minefield'), turnsLeft: -1, placedBy: 'w' });
