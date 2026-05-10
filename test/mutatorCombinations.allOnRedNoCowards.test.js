@@ -195,7 +195,7 @@ test('all_on_red tails + no_cowards rejects king backward movement', async () =>
   assert.equal(room.mutatorState.pendingCoinFlip, null);
 });
 
-test('deadlock/stuck-state sanity: tails + no_cowards with no king forward moves ends game by current behavior', async () => {
+test('deadlock/stuck-state sanity: tails + no_cowards skips turn without ending game or accumulating pending state', async () => {
   const { gameManager, room, whiteSocket, io, roomEvents } = setupRoom({
     roomCode: 'AONC-8',
     fen: '7k/8/8/8/8/8/PP6/KP6 w - - 0 1',
