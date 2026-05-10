@@ -86,18 +86,46 @@ test('activation stores mitosis target in activeRules.choiceData and clears pend
   assert.doesNotThrow(() => validateRoomIntegrity(room, 'test:mitosis-activation-storage'));
 });
 
-test('mitosis allows empty/enemy piece targets but rejects king/off-board targets', () => {
-  const { room, whiteSocket } = setupRoom({ roomCode: 'ME-2', fen: '4k3/8/8/3N4/8/8/8/4K2R w - - 0 1' });
+test('mitosis accepts empty and enemy non-king targets, rejects king targets, and ignores off-board targets', () => {
+  const { room, whiteSocket } = setupRoom({ roomCode: 'ME-2', fen: '4k3/8/8/3N4/8/8/7b/4K2R w - - 0 1' });
   setPendingAction(room, 'mitosis', 'w');
   const startFen = room.chess.fen();
 
+  // Empty square is accepted for choiceType=piece and stored as choiceData.
   whiteSocket.trigger('mutatorActionResponse', { targets: 'a1' });
-  const active = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
-  assert.ok(active);
-  assert.equal(active.choiceData, 'a1');
+  const emptyTargetRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
+  assert.ok(emptyTargetRule);
+  assert.equal(emptyTargetRule.choiceData, 'a1');
+  assert.equal(room.mutatorState.pendingAction, null);
+  assert.equal(room.chess.fen(), startFen);
 
+  // Enemy non-king piece is accepted and stored as choiceData.
   setPendingAction(room, 'mitosis', 'w');
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'h2' });
+  const enemyTargetRule = room.mutatorState.activeRules.filter((ar) => ar.rule.id === 'mitosis').at(-1);
+  assert.ok(enemyTargetRule);
+  assert.equal(enemyTargetRule.choiceData, 'h2');
+  assert.equal(room.mutatorState.pendingAction, null);
+  assert.equal(room.chess.fen(), startFen);
+  assert.doesNotThrow(() => validateRoomIntegrity(room, 'test:mitosis-enemy-target'));
+
+  // Off-board/malformed target is ignored (no new active rule, no prompt, pendingAction remains).
+  setPendingAction(room, 'mitosis', 'w');
+  const beforeMalformedCount = room.mutatorState.activeRules.filter((ar) => ar.rule.id === 'mitosis').length;
+  const emittedBeforeMalformed = whiteSocket.emitted.length;
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'z9' });
+  const afterMalformedCount = room.mutatorState.activeRules.filter((ar) => ar.rule.id === 'mitosis').length;
+  assert.equal(afterMalformedCount, beforeMalformedCount);
+  assert.equal(room.mutatorState.pendingAction.ruleId, 'mitosis');
+  assert.equal(whiteSocket.emitted.length, emittedBeforeMalformed);
+  assert.equal(room.chess.fen(), startFen);
+
+  // King target is rejected with prompt and pendingAction remains.
+  setPendingAction(room, 'mitosis', 'w');
+  const beforeKingCount = room.mutatorState.activeRules.filter((ar) => ar.rule.id === 'mitosis').length;
   whiteSocket.trigger('mutatorActionResponse', { targets: 'e8' });
+  const afterKingCount = room.mutatorState.activeRules.filter((ar) => ar.rule.id === 'mitosis').length;
+  assert.equal(afterKingCount, beforeKingCount);
   assert.equal(room.chess.fen(), startFen);
   assert.ok(whiteSocket.emitted.at(-1).payload.prompt.includes('cannot select a King'));
   assert.equal(room.mutatorState.pendingAction.ruleId, 'mitosis');
