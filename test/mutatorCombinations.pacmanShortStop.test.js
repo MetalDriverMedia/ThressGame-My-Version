@@ -7,6 +7,7 @@ const { GameManager, GameRoom } = require('../gameManager');
 const { RULES } = require('../mutators/mutatorDefs');
 const { getEffectiveLegalMoves } = require('../mutators/legalMoveEngine');
 const { getBotMovePool } = require('../botManager');
+const { checkMutatorDeadlock } = require('../utils/gameLifecycle');
 const turnClock = require('../utils/turnClock');
 const {
   createIoRecorder,
@@ -106,7 +107,7 @@ test('baseline: short_stop blocks normal long non-wrap move', async () => {
   assert.equal(shortStop.room.chess.fen(), before);
 });
 
-test('pacman_style + short_stop currently exposes long wrap move in effective moves but handleMove rejects it', async () => {
+test('pacman_style + short_stop filters long wrap move from effective pool and handleMove rejects it', async () => {
   const fen = '4k3/8/8/8/8/8/N7/4K3 w - - 0 1';
 
   const pacmanOnly = setupRoom({ roomCode: 'PAC-SS-COMB-1', fen, activeRuleIds: ['pacman_style'] });
@@ -115,7 +116,7 @@ test('pacman_style + short_stop currently exposes long wrap move in effective mo
   const combined = setupRoom({ roomCode: 'PAC-SS-COMB-2', fen, activeRuleIds: ['pacman_style', 'short_stop'] });
   const before = combined.room.chess.fen();
 
-  assert.equal(getEffectiveLegalMoves(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), true);
+  assert.equal(getEffectiveLegalMoves(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), false);
   await handleMove(combined.io, combined.whiteSocket, combined.gameManager, { from: 'a2', to: 'h4' });
 
   assert.equal(combined.room.mutatorState.pendingRPS, null);
@@ -145,7 +146,7 @@ test('pacman_style + short_stop allows normal 1-square move, emits once, and adv
   assert.equal(combined.room.chess.turn(), 'b');
 });
 
-test('pacman_style + short_stop currently exposes wrap capture in effective moves but handleMove rejects it', async () => {
+test('pacman_style + short_stop filters wrap capture from effective pool and handleMove rejects it', async () => {
   const fen = '4k3/8/8/8/7p/8/N7/4K3 w - - 0 1';
 
   const pacmanOnly = setupRoom({ roomCode: 'PAC-SS-CAP-1', fen, activeRuleIds: ['pacman_style'] });
@@ -158,7 +159,7 @@ test('pacman_style + short_stop currently exposes wrap capture in effective move
   const combined = setupRoom({ roomCode: 'PAC-SS-CAP-2', fen, activeRuleIds: ['pacman_style', 'short_stop'] });
   const before = combined.room.chess.fen();
 
-  assert.equal(getEffectiveLegalMoves(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), true);
+  assert.equal(getEffectiveLegalMoves(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), false);
   await handleMove(combined.io, combined.whiteSocket, combined.gameManager, { from: 'a2', to: 'h4' });
 
   assert.ok(combined.whiteSocket.emitted.find((e) => e.name === 'moveRejected'));
@@ -168,17 +169,25 @@ test('pacman_style + short_stop currently exposes wrap capture in effective move
   assert.equal(combined.room.chess.get('h4').type, 'p');
 });
 
-test('effective legal move pool ordering sanity documents default pool vs handleMove mismatch', () => {
+test('effective legal move pool ordering matches handleMove for pacman_style + short_stop', () => {
   const fen = '4k3/8/8/8/8/8/N7/4K3 w - - 0 1';
 
   const pacmanOnly = setupRoom({ roomCode: 'PAC-SS-POOL-1', fen, activeRuleIds: ['pacman_style'] });
   const combined = setupRoom({ roomCode: 'PAC-SS-POOL-2', fen, activeRuleIds: ['pacman_style', 'short_stop'] });
 
   assert.equal(getEffectiveLegalMoves(pacmanOnly.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), true);
-  assert.equal(getEffectiveLegalMoves(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), true);
+  const defaultCombinedMoves = getEffectiveLegalMoves(combined.room, 'w');
+  const preRestrictionCombinedMoves = getEffectiveLegalMoves(combined.room, 'w', { syntheticMovesBeforeRestrictions: true });
+
+  assert.equal(defaultCombinedMoves.some((m) => m.from === 'a2' && m.to === 'h4'), false);
+  assert.equal(preRestrictionCombinedMoves.some((m) => m.from === 'a2' && m.to === 'h4'), false);
+
+  const defaultPairs = new Set(defaultCombinedMoves.map((m) => `${m.from}-${m.to}`));
+  const preRestrictionPairs = new Set(preRestrictionCombinedMoves.map((m) => `${m.from}-${m.to}`));
+  assert.deepEqual(defaultPairs, preRestrictionPairs);
 });
 
-test('bot move pool sanity matches synthetic-before-restrictions legal move filtering', () => {
+test('bot move pool excludes long wrap under short_stop and matches effective legal pools', () => {
   const fen = '4k3/8/8/8/8/8/N7/4K3 w - - 0 1';
   const pacmanOnly = setupRoom({ roomCode: 'PAC-SS-BOT-1', fen, activeRuleIds: ['pacman_style'] });
   const combined = setupRoom({ roomCode: 'PAC-SS-BOT-2', fen, activeRuleIds: ['pacman_style', 'short_stop'] });
@@ -186,8 +195,19 @@ test('bot move pool sanity matches synthetic-before-restrictions legal move filt
   assert.equal(getBotMovePool(pacmanOnly.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), true);
   assert.equal(getBotMovePool(combined.room, 'w').some((m) => m.from === 'a2' && m.to === 'h4'), false);
 
+  const defaultCombined = getEffectiveLegalMoves(combined.room, 'w');
   const effectiveCombined = getEffectiveLegalMoves(combined.room, 'w', { syntheticMovesBeforeRestrictions: true });
   const combinedPairs = new Set(getBotMovePool(combined.room, 'w').map((m) => `${m.from}-${m.to}`));
+  const defaultPairs = new Set(defaultCombined.map((m) => `${m.from}-${m.to}`));
   const effectivePairs = new Set(effectiveCombined.map((m) => `${m.from}-${m.to}`));
+  assert.deepEqual(combinedPairs, defaultPairs);
   assert.deepEqual(combinedPairs, effectivePairs);
+});
+
+test('checkMutatorDeadlock default effective pool excludes long pacman wrap under short_stop', () => {
+  const fen = '4k3/8/8/8/8/8/N7/4K3 w - - 0 1';
+  const combined = setupRoom({ roomCode: 'PAC-SS-DEAD-1', fen, activeRuleIds: ['pacman_style', 'short_stop'] });
+
+  const ended = checkMutatorDeadlock(combined.room, combined.io, combined.gameManager);
+  assert.equal(ended, false);
 });

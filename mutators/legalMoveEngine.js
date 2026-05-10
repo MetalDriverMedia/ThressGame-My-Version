@@ -50,9 +50,7 @@ function getEffectiveLegalMoves(room, color, options = {}) {
     }
   }
 
-  if (options.syntheticMovesBeforeRestrictions) {
-    legalMoves = appendSyntheticMoves(room, currentTurn, legalMoves);
-  }
+  legalMoves = appendSyntheticMoves(room, currentTurn, legalMoves);
 
   if (ms && ms.activeRules.length > 0) {
     const restrictionRules = ms.activeRules.filter(ar => {
@@ -74,10 +72,6 @@ function getEffectiveLegalMoves(room, color, options = {}) {
         legalMoves = filterFn(legalMoves);
       }
     }
-  }
-
-  if (!options.syntheticMovesBeforeRestrictions) {
-    legalMoves = appendSyntheticMoves(room, currentTurn, legalMoves);
   }
 
   return legalMoves;
