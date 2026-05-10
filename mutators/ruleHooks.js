@@ -331,15 +331,29 @@ function safePlacePiece(room, board, square, type, color) {
 
 /**
  * Swap two squares safely. Fails if either destination is hard-blocked and
- * a piece would land there. Triggers soft restrictions after swap.
- * @returns {boolean} true if swap succeeded, false if blocked
+ * a piece would land there. Soft restrictions are resolved on both landing
+ * squares in deterministic order: sq2 (piece from sq1), then sq1 (piece from sq2).
+ *
+ * This is intentionally used by Drafted for Battle to make trap behavior explicit:
+ * - Minefield is consumed whenever triggered (including by kings).
+ * - Bottomless Pit persists.
+ * - Kings can be destroyed by Bottomless Pit and then handled by normal
+ *   checkKingDestroyed end-game flow downstream.
+ *
+ * @returns {{
+ *   swapped: boolean,
+ *   softRestrictionSquares: string[],
+ *   destroyedAt: string[],
+ *   anyDestroyed: boolean,
+ *   kingDestroyed: boolean,
+ * }}
  */
 function safeSwapSquares(room, board, sq1, sq2) {
   const p1 = board.get(sq1) || null;
   const p2 = board.get(sq2) || null;
 
-  if (p1 && isSquareHardBlocked(room, sq2)) return false;
-  if (p2 && isSquareHardBlocked(room, sq1)) return false;
+  if (p1 && isSquareHardBlocked(room, sq2)) return { swapped: false, softRestrictionSquares: [], destroyedAt: [], anyDestroyed: false, kingDestroyed: false };
+  if (p2 && isSquareHardBlocked(room, sq1)) return { swapped: false, softRestrictionSquares: [], destroyedAt: [], anyDestroyed: false, kingDestroyed: false };
 
   swapSquares(board, sq1, sq2);
   if (p1) trackLivingBombMove(room, sq1, sq2, p1);
@@ -347,13 +361,33 @@ function safeSwapSquares(room, board, sq1, sq2) {
   if (p1) trackMitosisTargetMove(room, sq1, sq2, p1);
   if (p2) trackMitosisTargetMove(room, sq2, sq1, p2);
 
-  const destroyed1 = p1 ? triggerSoftRestrictions(room, board, sq2) : false;
-  const destroyed2 = p2 ? triggerSoftRestrictions(room, board, sq1) : false;
-  if (destroyed1 || destroyed2) cleanupLivingBombMarkers(room, board);
-  if (destroyed1 || destroyed2) cleanupMitosisTargets(room, board);
-  if (destroyed1 || destroyed2) cleanupLockedSquaresAfterTrap(room);
+  const softRestrictionSquares = [];
+  const destroyedAt = [];
+  let kingDestroyed = false;
 
-  return true;
+  if (p1) {
+    softRestrictionSquares.push(sq2);
+    const destroyed1 = triggerSoftRestrictions(room, board, sq2);
+    if (destroyed1) {
+      destroyedAt.push(sq2);
+      if (p1.type === 'k') kingDestroyed = true;
+    }
+  }
+  if (p2) {
+    softRestrictionSquares.push(sq1);
+    const destroyed2 = triggerSoftRestrictions(room, board, sq1);
+    if (destroyed2) {
+      destroyedAt.push(sq1);
+      if (p2.type === 'k') kingDestroyed = true;
+    }
+  }
+
+  const anyDestroyed = destroyedAt.length > 0;
+  if (anyDestroyed) cleanupLivingBombMarkers(room, board);
+  if (anyDestroyed) cleanupMitosisTargets(room, board);
+  if (anyDestroyed) cleanupLockedSquaresAfterTrap(room);
+
+  return { swapped: true, softRestrictionSquares, destroyedAt, anyDestroyed, kingDestroyed };
 }
 
 // --- HOOK IMPLEMENTATIONS -----------------------------------------

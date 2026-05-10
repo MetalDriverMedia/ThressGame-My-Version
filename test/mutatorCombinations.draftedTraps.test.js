@@ -204,3 +204,63 @@ test('living bomb marker survives drafted swap when opposite swapped piece is tr
   assert.equal(room.status, 'ended');
   assert.equal(validateRoomIntegrity(room, 'test:drafted-living-bomb-cleanup-current-board'), true);
 });
+
+test('drafted swap resolves both trap endpoints deterministically when both landing squares are trapped', () => {
+  const { room, roomEvents, whiteSocket, blackSocket } = createRoom({ roomCode: 'DT-11', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
+  room.mutatorState.boardModifiers.bottomlessPits = [{ square: 'e1' }];
+  room.mutatorState.boardModifiers.mines = [{ square: 'g2' }];
+  room.mutatorState.activeRules.push({ rule: getRule('minefield'), turnsLeft: -1, placedBy: 'w' });
+
+  applyDrafted(room, whiteSocket, blackSocket);
+
+  // white king lands on mine (survives, mine consumed), white bishop lands on pit (destroyed)
+  assert.deepEqual(room.chess.get('g2'), { type: 'k', color: 'w' });
+  assert.equal(room.chess.get('e1'), undefined);
+  assert.deepEqual(room.mutatorState.boardModifiers.bottomlessPits, [{ square: 'e1' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
+
+  // black side still resolves after white side and remains coherent
+  assert.deepEqual(room.chess.get('g7'), { type: 'k', color: 'b' });
+  assert.deepEqual(room.chess.get('e8'), { type: 'n', color: 'b' });
+  assert.equal(roomEvents.some((e) => e.name === 'gameEnded' && e.payload?.reason === 'king-destroyed'), false);
+  assertFinalSanity(room, 'test:drafted-both-endpoints-trapped');
+});
+
+test('mitosis targets are culled if drafted trap cleanup destroys a targeted piece', async () => {
+  const { room, gameManager, io, whiteSocket, blackSocket, moveSocketWhite, moveSocketBlack } = createRoom({ roomCode: 'DT-12', fen: '4k3/6n1/8/8/8/8/6B1/4K3 w - - 0 1' });
+  room.mutatorState.boardModifiers.bottomlessPits = [{ square: 'e1' }];
+
+  setPending(room, 'mitosis');
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'g2' });
+
+  applyDrafted(room, whiteSocket, blackSocket);
+
+  assert.equal(room.chess.get('e1'), undefined);
+  const mitosisRule = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
+  assert.ok(mitosisRule, 'expected mitosis active rule to exist');
+  if (mitosisRule.choiceData === null || typeof mitosisRule.choiceData === 'string') {
+    assert.equal(mitosisRule.choiceData, null);
+  } else {
+    assert.equal(mitosisRule.choiceData.square, null);
+  }
+
+  // Ensure expiry does not duplicate onto an unrelated replacement piece after target cleanup.
+  room.chess.put({ type: 'r', color: 'b' }, 'e1');
+  const moveSequence = [
+    { socket: moveSocketWhite, from: 'g2', to: 'h3' },
+    { socket: moveSocketBlack, from: 'g7', to: 'h6' },
+    { socket: moveSocketWhite, from: 'h3', to: 'g2' },
+    { socket: moveSocketBlack, from: 'h6', to: 'g7' },
+  ];
+  let i = 0;
+  while (i < 4) {
+    const step = moveSequence[i % moveSequence.length];
+    await handleMove(io, step.socket, gameManager, { from: step.from, to: step.to });
+    i += 1;
+  }
+
+  assert.equal(room.chess.get('d1'), undefined);
+  assert.deepEqual(room.chess.get('e1'), { type: 'r', color: 'b' });
+  assert.equal(validateRoomIntegrity(room, 'test:drafted-mitosis-cleanup'), true);
+});
