@@ -152,6 +152,19 @@ function destroyPiece(room, board, square, options = {}) {
   return true;
 }
 
+function cleanupMinefieldRule(room) {
+  const ms = room?.mutatorState;
+  if (!ms) return;
+  const mines = ms.boardModifiers?.mines;
+  if (!Array.isArray(mines) || mines.length === 0) {
+    const { removePersistentRule } = require('./mutatorEngine');
+    removePersistentRule(ms, 'minefield');
+    ms.activeRules = Array.isArray(ms.activeRules)
+      ? ms.activeRules.filter((ar) => ar?.rule?.id !== 'minefield')
+      : ms.activeRules;
+  }
+}
+
 /**
  * Trigger mine/pit destruction when a piece lands on a soft-restricted square.
  * Minefields spare kings (while still consuming mines), but pits kill any piece.
@@ -169,10 +182,7 @@ function triggerSoftRestrictions(room, board, square) {
     const mineIdx = ms.boardModifiers.mines.findIndex(m => m.square === square);
     if (mineIdx !== -1) {
       ms.boardModifiers.mines.splice(mineIdx, 1);
-      if (ms.boardModifiers.mines.length === 0) {
-        const { removePersistentRule } = require('./mutatorEngine');
-        removePersistentRule(ms, 'minefield');
-      }
+      cleanupMinefieldRule(room);
       if (piece.type !== 'k') {
         return destroyPiece(room, board, square);
       }
@@ -516,10 +526,7 @@ const hooks = {
           }
         }
         ms.boardModifiers.mines.splice(mineIdx, 1);
-        if (ms.boardModifiers.mines.length === 0) {
-          const { removePersistentRule } = require('./mutatorEngine');
-          removePersistentRule(ms, 'minefield');
-        }
+        cleanupMinefieldRule(room);
       }
     },
   },
@@ -2073,6 +2080,7 @@ module.exports = {
   destroyPiece,
   riskItRookPlaceRooks,
   triggerSoftRestrictions,
+  cleanupMinefieldRule,
   safeMovePiece,
   safePlacePiece,
   safeSwapSquares,

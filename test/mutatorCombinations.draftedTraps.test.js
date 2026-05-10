@@ -138,6 +138,7 @@ test('drafted swap with selected piece starting on minefield square', () => {
   assert.deepEqual(room.chess.get('g2'), { type: 'k', color: 'w' });
   assert.deepEqual(room.chess.get('e1'), { type: 'b', color: 'w' });
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assertFinalSanity(room, 'test:drafted-mine-origin');
 });
 
@@ -149,6 +150,7 @@ test('drafted swap where selected piece lands on minefield square', () => {
   assert.equal(room.chess.get('e1'), undefined);
   assert.deepEqual(room.chess.get('g2'), { type: 'k', color: 'w' });
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assertFinalSanity(room, 'test:drafted-mine-destination');
 });
 
@@ -162,6 +164,7 @@ test('trap lifecycle in drafted interactions: pit persists, mine consumes on des
 
   assert.deepEqual(room.mutatorState.boardModifiers.bottomlessPits, [{ square: 'e1' }]);
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assertFinalSanity(room, 'test:drafted-trap-lifecycle');
 });
 

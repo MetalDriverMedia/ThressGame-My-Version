@@ -109,6 +109,7 @@ test('baseline: minefield destroys non-king movers and consumes mine', async () 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'a1', to: 'a2' });
   assert.equal(room.chess.get('a2'), undefined);
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
 });
 
 test('mind control target standing on bottomless pit square does not immediately trigger trap', () => {
@@ -150,6 +151,7 @@ test('converted piece later moves onto minefield and is destroyed while mine is 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'e7', to: 'f5' });
   assert.equal(room.chess.get('f5'), undefined);
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assertFinalSanity(room, 'mct-mine-destination');
 });
 
@@ -165,6 +167,7 @@ test('trap marker lifecycle with both traps stays coherent across conversion and
 
   assert.deepEqual(room.mutatorState.boardModifiers.bottomlessPits, [{ square: 'h4' }]);
   assert.deepEqual(room.mutatorState.boardModifiers.mines, []);
+  assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), false);
   assertFinalSanity(room, 'mct-lifecycle');
 });
 
