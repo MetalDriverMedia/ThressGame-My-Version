@@ -196,6 +196,12 @@ function triggerSoftRestrictions(room, board, square) {
  * Triggers soft restrictions (mines/pits) after placement.
  * @returns {string|null} final square or null if piece destroyed/no valid square
  */
+
+function cleanupLockedSquaresAfterTrap(room) {
+  const { clearStaleLockedSquares } = require('./lockedSquares');
+  clearStaleLockedSquares(room);
+}
+
 function safeMovePiece(room, board, from, to) {
   let finalSquare = to;
 
@@ -210,7 +216,8 @@ function safeMovePiece(room, board, from, to) {
     movePiece(board, from, to);
   }
 
-  triggerSoftRestrictions(room, board, finalSquare);
+  const destroyed = triggerSoftRestrictions(room, board, finalSquare);
+  if (destroyed) cleanupLockedSquaresAfterTrap(room);
   return finalSquare;
 }
 
@@ -227,7 +234,8 @@ function safePlacePiece(room, board, square, type, color) {
   }
 
   placePiece(board, finalSquare, type, color);
-  triggerSoftRestrictions(room, board, finalSquare);
+  const destroyed = triggerSoftRestrictions(room, board, finalSquare);
+  if (destroyed) cleanupLockedSquaresAfterTrap(room);
   return finalSquare;
 }
 
@@ -245,8 +253,9 @@ function safeSwapSquares(room, board, sq1, sq2) {
 
   swapSquares(board, sq1, sq2);
 
-  if (p1) triggerSoftRestrictions(room, board, sq2);
-  if (p2) triggerSoftRestrictions(room, board, sq1);
+  const destroyed1 = p1 ? triggerSoftRestrictions(room, board, sq2) : false;
+  const destroyed2 = p2 ? triggerSoftRestrictions(room, board, sq1) : false;
+  if (destroyed1 || destroyed2) cleanupLockedSquaresAfterTrap(room);
 
   return true;
 }
@@ -273,6 +282,7 @@ const hooks = {
         }
       }
       syncChessFromBoard(room, board);
+      cleanupLockedSquaresAfterTrap(room);
     },
   },
 
@@ -890,12 +900,16 @@ const hooks = {
       // Place a bishop of the chooser's color
       if (bishopSquare) {
         safePlacePiece(room, board, bishopSquare, 'b', chooserColor);
-        // Lock the new bishop -- chooser can't move it on this same turn
-        const ms = room.mutatorState;
-        if (!ms.boardModifiers.lockedSquares) ms.boardModifiers.lockedSquares = [];
-        ms.boardModifiers.lockedSquares.push({ square: bishopSquare, piece: 'b', color: chooserColor });
+        const placed = board.get(bishopSquare);
+        // Lock the new bishop only if it survived soft restrictions.
+        if (placed && placed.type === 'b' && placed.color === chooserColor) {
+          const ms = room.mutatorState;
+          if (!ms.boardModifiers.lockedSquares) ms.boardModifiers.lockedSquares = [];
+          ms.boardModifiers.lockedSquares.push({ square: bishopSquare, piece: 'b', color: chooserColor });
+        }
       }
       syncChessFromBoard(room, board);
+      cleanupLockedSquaresAfterTrap(room);
     },
   },
 

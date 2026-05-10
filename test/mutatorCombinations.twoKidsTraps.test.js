@@ -139,7 +139,7 @@ test('combination: two kids places bishop on bottomless pit, bishop is destroyed
   whiteSocket.trigger('mutatorActionResponse', { targets: 'e3' });
 
   assert.equal(room.chess.get('e3'), undefined);
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['e3']);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, []);
   assert.deepEqual(room.mutatorState.boardModifiers.bottomlessPits.map((p) => p.square), ['e3']);
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'e3', to: 'f4' });
@@ -176,7 +176,7 @@ test('combination: two kids places bishop on minefield, bishop is destroyed imme
   whiteSocket.trigger('mutatorActionResponse', { targets: 'e3' });
 
   assert.equal(room.chess.get('e3'), undefined);
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['e3']);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, []);
   assert.deepEqual(room.mutatorState.boardModifiers.mines.map((m) => m.square), []);
   assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'minefield'), true);
 

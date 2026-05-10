@@ -341,6 +341,7 @@ async function handleMove(io, socket, gameManager, data) {
         } else {
           destroyPiece(room, board, dest, { allowKingDestruction: trapType === 'pit' });
           syncChessFromBoard(room, board);
+          clearStaleLockedSquares(room);
 
           if (trapType === 'mine') {
             ms.boardModifiers.mines.splice(trapIndex, 1);
@@ -371,6 +372,7 @@ async function handleMove(io, socket, gameManager, data) {
         if (board.get(rookDest)) {
           destroyPiece(room, board, rookDest, { allowKingDestruction: castleTrap === 'pit' });
           syncChessFromBoard(room, board);
+          clearStaleLockedSquares(room);
           if (castleTrap === 'mine') {
             ms.boardModifiers.mines.splice(castleTrapIdx, 1);
             if (ms.boardModifiers.mines.length === 0) {

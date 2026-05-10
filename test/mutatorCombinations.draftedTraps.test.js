@@ -175,7 +175,7 @@ test('post-drafted state remains coherent for pending/active/locked/modifiers an
   assert.equal(room.mutatorState.pendingChoice, null);
   assert.equal(room.mutatorState.pendingAction, null);
   assert.equal(room.mutatorState.pendingSecondAction, null);
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'a4' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, []);
   assert.equal(room.mutatorState.activeRules.some((r) => r.rule.id === 'bottomless_pit'), true);
   assertFinalSanity(room, 'test:drafted-traps-coherent');
 });
