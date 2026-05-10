@@ -47,7 +47,7 @@ function setupRoom({ roomCode, manualCoinFlip }) {
 }
 
 test('manual Risk It Rook completion with active All On Red creates exactly one pending coin flip', () => {
-  const { room, whiteSocket, blackSocket, roomEvents } = setupRoom({ roomCode: 'RIR-AOR-1', manualCoinFlip: true });
+  const { room, whiteSocket, blackSocket, roomEvents, io } = setupRoom({ roomCode: 'RIR-AOR-1', manualCoinFlip: true });
 
   const originalRandom = Math.random;
   try {
@@ -64,7 +64,7 @@ test('manual Risk It Rook completion with active All On Red creates exactly one 
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlip').length, 0);
 
-  triggerCoinFlip(room, { to: () => ({ emit: () => {} }) }, 'w');
+  triggerCoinFlip(room, io, 'w');
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
 });
 
