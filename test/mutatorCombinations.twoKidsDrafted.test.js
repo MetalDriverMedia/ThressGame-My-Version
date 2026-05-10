@@ -83,7 +83,7 @@ test('baseline two kids creates bishop, sacrifices pawns, and records same-turn 
   assert.equal(room.chess.get('a2'), undefined);
   assert.equal(room.chess.get('b2'), undefined);
   assert.deepEqual(room.chess.get('c3'), { type: 'b', color: 'w' });
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'c3' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['c3']);
 });
 
 test('baseline drafted swaps selected bishop/knight with both kings', () => {
@@ -120,19 +120,18 @@ test('drafted first then two kids still resolves correctly after king relocation
   assert.deepEqual(room.chess.get('g8'), { type: 'k', color: 'b' });
   assert.deepEqual(room.chess.get('e8'), { type: 'n', color: 'b' });
   assert.deepEqual(room.chess.get('c3'), { type: 'b', color: 'w' });
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'c3' }]);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares.map((ls) => ls.square), ['c3']);
 });
 
-test('same-turn lock after drafted remains tied to spawn square (not spawned piece identity)', async () => {
+test('drafted swap of spawned bishop cleans stale lock on original square', async () => {
   const { room, gameManager, io, whiteSocket, blackSocket, moveSocketWhite } = createRoom({ roomCode: 'TKD-5', fen: '4k3/6n1/8/8/8/8/PP6/4K1B1 w - - 0 1' });
   applyTwoKids(room, whiteSocket);
   applyDrafted(room, whiteSocket, blackSocket, 'c3', 'g7');
 
   await handleMove(io, moveSocketWhite, gameManager, { from: 'c3', to: 'c4' });
-  const reject = moveSocketWhite.emitted.find((e) => e.name === 'moveRejected');
-  assert.ok(reject);
-  assert.equal(reject.payload?.message, "That piece can't move on the same turn it was placed.");
-  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, [{ square: 'c3' }]);
+  const reject = moveSocketWhite.emitted.find((e) => e.name === 'moveRejected' && e.payload?.message === "That piece can't move on the same turn it was placed.");
+  assert.equal(reject, undefined);
+  assert.deepEqual(room.mutatorState.boardModifiers.lockedSquares, []);
 });
 
 test('lockedSquares lifecycle clears after a later successful move, then previously locked square piece can move', async () => {
