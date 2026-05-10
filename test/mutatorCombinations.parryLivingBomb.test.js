@@ -103,7 +103,7 @@ test('parry defender win on bomb square blocks capture and keeps bomb marker coh
   assert.equal(validateRoomIntegrity(room, 'test:parry-lb-defender-win'), true);
 });
 
-test('parry attacker win on bomb square proceeds capture and preserves current living-bomb marker behavior without stale pendingRPS', async () => {
+test('parry attacker win on bomb square proceeds capture while preserving consistent marker state without stale pendingRPS', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, blackSocket } = createRoom({ roomCode: 'PLB-4', fen: '4k3/8/8/8/8/8/3p4/3QK3 w - - 0 1' });
   activateRuleById(room, 'parry');
   setPending(room, 'living_bomb');

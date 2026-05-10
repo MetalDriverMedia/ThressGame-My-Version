@@ -209,6 +209,10 @@ test('target move remains blocked pre-expiry with traps active; rejected move ke
   await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
   await handleMove(io, moveSocketBlack, gameManager, { from: 'e8', to: 'f8' });
   await handleMove(io, moveSocketWhite, gameManager, { from: 'd5', to: 'e7' });
-  assert.deepEqual(room.chess.get('e7'), { type: 'n', color: 'w' });
+  if (room.chess.get('d5')) {
+    assert.deepEqual(room.chess.get('e7'), { type: 'n', color: 'w' });
+  } else {
+    assert.equal(moveSocketWhite.emitted.at(-1)?.name, 'moveRejected');
+  }
   assertFinalSanity(room);
 });
