@@ -614,6 +614,15 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
 
         if (choiceType === 'two_pieces_same_column') {
           if (!ms.pendingAction.partialData) {
+            const firstPiece = room.chess.get(target);
+            if (!firstPiece) {
+              socket.emit('mutatorAction', {
+                ruleId, actionType: choiceType,
+                prompt: 'Pick a piece in a column to start!',
+                forPlayer: player.color,
+              });
+              return;
+            }
             ms.pendingAction.partialData = { square1: target };
             socket.emit('mutatorAction', {
               ruleId, actionType: choiceType,
@@ -622,6 +631,23 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
             });
             return;
           } else {
+            const secondPiece = room.chess.get(target);
+            if (!secondPiece) {
+              socket.emit('mutatorAction', {
+                ruleId, actionType: choiceType,
+                prompt: 'Pick a piece in the same column!',
+                forPlayer: player.color,
+              });
+              return;
+            }
+            if (target === ms.pendingAction.partialData.square1) {
+              socket.emit('mutatorAction', {
+                ruleId, actionType: choiceType,
+                prompt: 'Pick a DIFFERENT piece in the same column!',
+                forPlayer: player.color,
+              });
+              return;
+            }
             // Validate same column
             if (target[0] !== ms.pendingAction.partialData.square1[0]) {
               socket.emit('mutatorAction', {

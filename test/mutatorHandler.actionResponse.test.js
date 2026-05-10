@@ -150,7 +150,7 @@ test('valid square response activates and clears pending actions', () => {
   assert.ok(activated.payload.mutatorState);
 });
 
-test('two_squares and two_pieces_same_column multi-step flows', () => {
+test('two_squares multi-step flow', () => {
   const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-I' });
 
   room.mutatorState.pendingAction = { ruleId: 'two-sq', actionType: 'two_squares', forPlayer: 'w', rule: { id: 'two-sq', name: 'Two', description: '', duration: 1 } };
@@ -158,14 +158,72 @@ test('two_squares and two_pieces_same_column multi-step flows', () => {
   assert.deepEqual(room.mutatorState.pendingAction.partialData, { square1: 'a3' });
   whiteSocket.trigger('mutatorActionResponse', { targets: 'a4' });
   assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
+});
 
-  roomEvents.length = 0;
-  room.mutatorState.pendingAction = { ruleId: 'two-col', actionType: 'two_pieces_same_column', forPlayer: 'w', rule: { id: 'two-col', name: 'Col', description: '', duration: 1 } };
+test('two_pieces_same_column rejects selecting the same piece twice', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-I2' });
+  const rule = { id: 'moving_up_the_corporate_ladder', name: 'Moving Up the Corporate Ladder', description: '', duration: null };
+  room.mutatorState.pendingAction = { ruleId: rule.id, actionType: 'two_pieces_same_column', forPlayer: 'w', rule };
+  room.chess.load('4k3/8/8/8/8/8/R7/4K3 w - - 0 1');
+
   whiteSocket.trigger('mutatorActionResponse', { targets: 'a2' });
-  whiteSocket.trigger('mutatorActionResponse', { targets: 'b2' });
-  assert.match(whiteSocket.emitted.at(-1).payload.prompt, /same column/i);
-  whiteSocket.trigger('mutatorActionResponse', { targets: 'a1' });
-  assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
+  assert.deepEqual(room.mutatorState.pendingAction.partialData, { square1: 'a2' });
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'a2' });
+  assert.match(whiteSocket.emitted.at(-1).payload.prompt, /DIFFERENT piece in the same column/i);
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+  assert.ok(room.mutatorState.pendingAction);
+  assert.deepEqual(room.mutatorState.pendingAction.partialData, { square1: 'a2' });
+});
+
+test('two_pieces_same_column rejects empty second square', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-I3' });
+  const rule = { id: 'moving_up_the_corporate_ladder', name: 'Moving Up the Corporate Ladder', description: '', duration: null };
+  room.mutatorState.pendingAction = { ruleId: rule.id, actionType: 'two_pieces_same_column', forPlayer: 'w', rule };
+  room.chess.load('4k3/8/8/8/8/8/R7/4K3 w - - 0 1');
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'a2' });
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'a3' });
+  assert.match(whiteSocket.emitted.at(-1).payload.prompt, /Pick a piece in the same column/i);
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+  assert.ok(room.mutatorState.pendingAction);
+  assert.deepEqual(room.mutatorState.pendingAction.partialData, { square1: 'a2' });
+});
+
+test('two_pieces_same_column rejects King as first or second selection', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-I4' });
+  const rule = { id: 'moving_up_the_corporate_ladder', name: 'Moving Up the Corporate Ladder', description: '', duration: null };
+  room.mutatorState.pendingAction = { ruleId: rule.id, actionType: 'two_pieces_same_column', forPlayer: 'w', rule };
+  room.chess.load('4k3/8/8/8/8/8/R7/4K3 w - - 0 1');
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'e1' });
+  assert.match(whiteSocket.emitted.at(-1).payload.prompt, /cannot select a King/i);
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+  assert.equal(room.mutatorState.pendingAction.partialData, undefined);
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'a2' });
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'e1' });
+  assert.match(whiteSocket.emitted.at(-1).payload.prompt, /cannot select a King/i);
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+  assert.deepEqual(room.mutatorState.pendingAction.partialData, { square1: 'a2' });
+});
+
+test('two_pieces_same_column accepts two different non-King pieces in same column', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-I5' });
+  const rule = { id: 'moving_up_the_corporate_ladder', name: 'Moving Up the Corporate Ladder', description: '', duration: null };
+  room.mutatorState.pendingAction = { ruleId: rule.id, actionType: 'two_pieces_same_column', forPlayer: 'w', rule };
+  room.chess.load('4k3/8/8/8/8/r7/R7/4K3 w - - 0 1');
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'a2' });
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'a3' });
+
+  const activations = roomEvents.filter((e) => e.name === 'mutatorActivated');
+  assert.equal(activations.length, 1);
+  assert.equal(room.mutatorState.pendingAction, null);
+  assert.equal(room.chess.get('a2').type, 'r');
+  assert.equal(room.chess.get('a2').color, 'b');
+  assert.equal(room.chess.get('a3').type, 'r');
+  assert.equal(room.chess.get('a3').color, 'w');
 });
 
 test('secondPlayerChoice creates pendingSecondAction then human response activates', () => {
