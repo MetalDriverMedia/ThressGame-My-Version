@@ -56,63 +56,66 @@ async function checkGameEnd(room, io, gameManager, movingPlayer) {
  * @param {Object} data - Move data: {from, to, promotion?}
  */
 async function handleMove(io, socket, gameManager, data) {
+  const buildResult = (status, extras = {}) => ({ status, ...extras });
+  const rejectResult = (reason, message) => buildResult('rejected', { reason, message });
+  const ignoredResult = (reason, message) => buildResult('ignored', { reason, message });
   const { from, to, promotion } = data || {};
 
   // Validate square notation
   if (!validateSquare(from) || !validateSquare(to)) {
     socket.emit('moveRejected', { error: 'Invalid square notation.' });
-    return;
+    return rejectResult('invalidSquare', 'Invalid square notation.');
   }
 
   // Find room and player from socket
   const room = gameManager.getRoomForSocket(socket.id);
   if (!room) {
     socket.emit('moveRejected', { error: 'You are not in a room.' });
-    return;
+    return ignoredResult('missingRoom', 'You are not in a room.');
   }
 
   const player = room.getPlayerBySocket(socket.id);
   if (!player) {
     socket.emit('moveRejected', { error: 'Player not found in room.' });
-    return;
+    return ignoredResult('missingPlayer', 'Player not found in room.');
   }
 
   // Game must be active
   if (room.status !== 'active') {
     socket.emit('moveRejected', { error: 'Game is not active.' });
-    return;
+    return ignoredResult('gameNotActive', 'Game is not active.');
   }
 
   // Standard turn enforcement via chess.js -- no _turn hack
   const currentTurn = room.chess.turn();
   if (currentTurn !== player.color) {
     socket.emit('moveRejected', { error: 'It is not your turn.' });
-    return;
+    return rejectResult('notYourTurn', 'It is not your turn.');
   }
 
   // Verify the piece at 'from' belongs to the player
   const pieceAtFrom = room.chess.get(from);
   if (!pieceAtFrom) {
     socket.emit('moveRejected', { error: 'No piece on that square.' });
-    return;
+    return rejectResult('noPieceAtFrom', 'No piece on that square.');
   }
   if (pieceAtFrom.color !== player.color) {
     socket.emit('moveRejected', { error: 'That piece does not belong to you.' });
-    return;
+    return rejectResult('wrongPieceColor', 'That piece does not belong to you.');
   }
 
   // Block moves in deterministic pending-state priority order.
   const pendingBlocker = getMovePendingBlocker(room, player.color);
   if (pendingBlocker) {
     socket.emit('moveRejected', { message: pendingBlocker.message });
-    return;
+    return rejectResult(pendingBlocker.key, pendingBlocker.message);
   }
 
   // Block moves from squares locked this turn (e.g. a bishop just placed by Two Kids in a Trenchcoat)
   clearStaleLockedSquares(room);
   if (room.mutatorState?.boardModifiers?.lockedSquares?.some(ls => ls.square === from)) {
     socket.emit('moveRejected', { message: "That piece can't move on the same turn it was placed." });
-    return;
+    return rejectResult('lockedSquare', "That piece can't move on the same turn it was placed.");
   }
 
   // Handle promotion
@@ -132,7 +135,7 @@ async function handleMove(io, socket, gameManager, data) {
   if (!allowance.allowed) {
     const message = restrictionRules.length > 0 ? 'Move blocked by active rule.' : 'Illegal move.';
     socket.emit('moveRejected', { error: message });
-    return;
+    return rejectResult('illegalMove', message);
   }
 
   if (ms && ms.activeRules.length > 0) {
@@ -142,7 +145,7 @@ async function handleMove(io, socket, gameManager, data) {
     const board = fenToBoard(room.chess.fen());
     if (wouldLeaveKingInCheck(board, from, to, player.color, room.mutatorState)) {
       socket.emit('moveRejected', { error: 'That move would leave your king in check.' });
-      return;
+      return rejectResult('kingInCheck', 'That move would leave your king in check.');
     }
   }
 
@@ -167,7 +170,7 @@ async function handleMove(io, socket, gameManager, data) {
         attacker: player.color,
         defender: opponentColor,
       });
-      return;
+      return buildResult('deferred', { reason: 'pendingRPS', pending: 'pendingRPS' });
     }
     if (room.mutatorState.rpsResolved) {
       room.mutatorState.rpsResolved = false;
@@ -287,7 +290,7 @@ async function handleMove(io, socket, gameManager, data) {
 
     if (!moveResult) {
       socket.emit('moveRejected', { error: 'Illegal move.' });
-      return;
+      return rejectResult('illegalMove', 'Illegal move.');
     }
     validateRoomIntegrity(room, 'moveHandler:normal-move');
   }
@@ -365,7 +368,7 @@ async function handleMove(io, socket, gameManager, data) {
 
   // If a king was removed by a destination trap, end immediately through king-destruction flow.
   if (checkKingDestroyed(room, io, gameManager)) {
-    return;
+    return buildResult('ended', { reason: 'kingDestroyed' });
   }
 
   // Record move in history
@@ -410,7 +413,7 @@ async function handleMove(io, socket, gameManager, data) {
   const gameEnded = await checkGameEnd(room, io, gameManager, player);
   if (gameEnded) {
     turnClock.clearClock(room);
-    return;
+    return buildResult('ended', { reason: room.endReason || 'gameEnded' });
   }
 
   // Start clock for the next player's turn (no-op for bot games)
@@ -440,7 +443,7 @@ async function handleMove(io, socket, gameManager, data) {
     }
 
     // Check if a king was destroyed by mutator effects
-    if (checkKingDestroyed(room, io, gameManager)) return;
+    if (checkKingDestroyed(room, io, gameManager)) return buildResult('ended', { reason: 'kingDestroyed' });
 
     // Increment move count
     incrementMoveCount(ms);
@@ -470,7 +473,7 @@ async function handleMove(io, socket, gameManager, data) {
     }
 
     // Check if mutator restrictions leave the next player with no legal moves
-    if (checkMutatorDeadlock(room, io, gameManager)) return;
+    if (checkMutatorDeadlock(room, io, gameManager)) return buildResult('ended', { reason: room.endReason || 'mutatorDeadlock' });
 
     // Check if next player needs to choose a rule
     if (shouldTriggerChoice(ms)) {
@@ -605,6 +608,10 @@ async function handleMove(io, socket, gameManager, data) {
       mutatorState: serializeMutatorState(ms),
     });
   }
+  return buildResult('applied', {
+    reason: 'moveApplied',
+    move: { from: moveResult.from, to: moveResult.to, promotion: moveResult.promotion || null },
+  });
 }
 
 module.exports = { handleMove };

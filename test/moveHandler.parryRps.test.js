@@ -45,7 +45,8 @@ test('parry RPS resolution: attacker win proceeds capture via socket rpsChoice h
   handlers.registerSocketHandlers(whiteSocket, io, gameManager);
   handlers.registerSocketHandlers(blackSocket, io, gameManager);
 
-  await handleMove(io, whiteSocket, gameManager, { from: 'd1', to: 'd2' });
+  const result = await handleMove(io, whiteSocket, gameManager, { from: 'd1', to: 'd2' });
+  assert.deepEqual(result, { status: 'deferred', reason: 'pendingRPS', pending: 'pendingRPS' });
   assert.ok(room.mutatorState.pendingRPS);
 
   whiteSocket.trigger('rpsChoice', { choice: 'rock' });

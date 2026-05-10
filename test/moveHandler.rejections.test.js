@@ -18,9 +18,10 @@ test('handleMove rejects sockets mapped to room but not present as room player',
   const socket = createSocket('sock-ghost');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { error: 'Player not found in room.' } });
+  assert.deepEqual(result, { status: 'ignored', reason: 'missingPlayer', message: 'Player not found in room.' });
 });
 
 test('handleMove rejects moving from an empty square', async () => {
@@ -32,9 +33,10 @@ test('handleMove rejects moving from an empty square', async () => {
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e3', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e3', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { error: 'No piece on that square.' } });
+  assert.deepEqual(result, { status: 'rejected', reason: 'noPieceAtFrom', message: 'No piece on that square.' });
 });
 
 test('handleMove rejects moving an opponent piece on your turn', async () => {
@@ -76,9 +78,10 @@ test('handleMove blocks pending mutator choice for chooser', async () => {
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { message: 'Choose a rule before making your move.' } });
+  assert.deepEqual(result, { status: 'rejected', reason: 'pendingChoice', message: 'Choose a rule before making your move.' });
 });
 
 test('handleMove blocks moves while pending mutator action exists', async () => {
@@ -91,9 +94,10 @@ test('handleMove blocks moves while pending mutator action exists', async () => 
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { message: 'Complete the rule selection first.' } });
+  assert.deepEqual(result, { status: 'rejected', reason: 'pendingAction', message: 'Complete the rule selection first.' });
 });
 
 test('handleMove blocks moves while pending second mutator action exists', async () => {
@@ -106,9 +110,10 @@ test('handleMove blocks moves while pending second mutator action exists', async
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { message: 'Complete the rule selection first.' } });
+  assert.deepEqual(result, { status: 'rejected', reason: 'pendingSecondAction', message: 'Complete the rule selection first.' });
 });
 
 test('handleMove blocks moves while pending RPS exists', async () => {
@@ -121,9 +126,10 @@ test('handleMove blocks moves while pending RPS exists', async () => {
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { message: 'Waiting for RPS resolution.' } });
+  assert.deepEqual(result, { status: 'rejected', reason: 'pendingRPS', message: 'Waiting for RPS resolution.' });
 });
 
 test('handleMove blocks pending coin flip for affected player only', async () => {
@@ -136,9 +142,10 @@ test('handleMove blocks pending coin flip for affected player only', async () =>
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], { name: 'moveRejected', payload: { message: 'Flip the coin first!' } });
+  assert.deepEqual(result, { status: 'rejected', reason: 'pendingCoinFlip', message: 'Flip the coin first!' });
 });
 
 test('handleMove allows unaffected player to move when coin flip is pending for opponent', async () => {
@@ -151,12 +158,13 @@ test('handleMove allows unaffected player to move when coin flip is pending for 
   const socket = createSocket('sock-w');
   const { io, roomEvents } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.equal(socket.emitted.length, 0);
   assert.equal(room.chess.get('e4').type, 'p');
   assert.equal(room.chess.get('e2'), undefined);
   assert.equal(roomEvents.some(e => e.name === 'moveApplied'), true);
+  assert.equal(result.status, 'applied');
 });
 
 test('handleMove blocks movement from locked square in board modifiers', async () => {
@@ -169,10 +177,11 @@ test('handleMove blocks movement from locked square in board modifiers', async (
   const socket = createSocket('sock-w');
   const { io } = createIoRecorder();
 
-  await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
+  const result = await handleMove(io, socket, gameManager, { from: 'e2', to: 'e4' });
 
   assert.deepEqual(socket.emitted[0], {
     name: 'moveRejected',
     payload: { message: "That piece can't move on the same turn it was placed." },
   });
+  assert.deepEqual(result, { status: 'rejected', reason: 'lockedSquare', message: "That piece can't move on the same turn it was placed." });
 });
