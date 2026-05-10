@@ -162,26 +162,9 @@ function triggerSoftRestrictions(room, board, square) {
   if (!ms) return false;
 
   const piece = board.get(square);
-  if (!piece) {
-    return false;
-  }
+  if (!piece) return false;
 
-  if (piece.type === 'k') {
-    // Kings survive minefields, but still consume mines.
-    if (ms.boardModifiers && ms.boardModifiers.mines) {
-      const mineIdx = ms.boardModifiers.mines.findIndex(m => m.square === square);
-      if (mineIdx !== -1) {
-        ms.boardModifiers.mines.splice(mineIdx, 1);
-        if (ms.boardModifiers.mines.length === 0) {
-          const { removePersistentRule } = require('./mutatorEngine');
-          removePersistentRule(ms, 'minefield');
-        }
-      }
-    }
-    return false;
-  }
-
-  // Check mines
+  // Minefields spare kings, but mines are still consumed.
   if (ms.boardModifiers && ms.boardModifiers.mines) {
     const mineIdx = ms.boardModifiers.mines.findIndex(m => m.square === square);
     if (mineIdx !== -1) {
@@ -190,11 +173,13 @@ function triggerSoftRestrictions(room, board, square) {
         const { removePersistentRule } = require('./mutatorEngine');
         removePersistentRule(ms, 'minefield');
       }
-      return destroyPiece(room, board, square, { allowKingDestruction: true });
+      if (piece.type !== 'k') {
+        return destroyPiece(room, board, square);
+      }
     }
   }
 
-  // Check bottomless pits
+  // Bottomless pits kill any piece, including kings.
   if (ms.boardModifiers && ms.boardModifiers.bottomlessPits) {
     const pit = ms.boardModifiers.bottomlessPits.find(p => p.square === square);
     if (pit) {

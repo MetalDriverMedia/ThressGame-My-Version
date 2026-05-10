@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { handleMove } = require('../handlers/moveHandler');
+const { safeMovePiece } = require('../mutators/ruleHooks');
 const { GameManager } = require('../gameManager');
 const {
   createIoRecorder,
@@ -210,4 +211,16 @@ test('king can move from check onto a bottomless pit and is destroyed', async ()
   assert.equal(ended.length, 1);
   assert.equal(ended[0].payload.reason, 'king-destroyed');
   assert.equal(ended[0].payload.winner, 'b');
+});
+
+test('safeMovePiece path destroys king on bottomless pit (shared soft-restriction path)', () => {
+  const room = createActiveRoomWithPlayers('MVT35');
+  room.chess.load('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
+  room.mutatorState.boardModifiers.bottomlessPits = [{ square: 'e2' }];
+
+  const board = new Map([['e1', { type: 'k', color: 'w' }], ['e8', { type: 'k', color: 'b' }]]);
+  const finalSquare = safeMovePiece(room, board, 'e1', 'e2');
+
+  assert.equal(finalSquare, 'e2');
+  assert.equal(board.get('e2'), undefined);
 });
