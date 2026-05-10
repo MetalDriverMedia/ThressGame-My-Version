@@ -57,6 +57,16 @@ function setPendingAction(room, ruleId, forPlayer = 'w') {
   room.mutatorState.pendingAction = { ruleId, actionType: rule.choiceType, forPlayer, rule };
 }
 
+async function withMockedRandom(value, fn) {
+  const originalRandom = Math.random;
+  try {
+    Math.random = () => value;
+    return await fn();
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
 async function playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack) {
   await handleMove(io, moveSocketWhite, gameManager, { from: 'h1', to: 'h2' });
   await handleMove(io, moveSocketBlack, gameManager, { from: 'e8', to: 'f8' });
@@ -133,14 +143,10 @@ test('mitosis accepts empty and enemy non-king targets, rejects king targets, an
 
 test('target move is blocked and rejected move does not advance moveCount or expiry', async () => {
   const { room, gameManager, io, whiteSocket, moveSocketWhite } = setupRoom({ roomCode: 'ME-3', fen: '4k3/8/8/3N4/8/8/8/4K2R w - - 0 1' });
-  const originalRandom = Math.random;
-  try {
-    Math.random = () => 0;
+  await withMockedRandom(0, async () => {
     setPendingAction(room, 'mitosis', 'w');
     whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
-  } finally {
-    Math.random = originalRandom;
-  }
+  });
 
   const beforeCount = room.mutatorState.moveCount;
   const beforeExpires = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis').expiresAtMove;
@@ -153,22 +159,20 @@ test('target move is blocked and rejected move does not advance moveCount or exp
 
 test('forced expiry timing uses moveCount and emits single mutatorExpired with cleanup', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, moveSocketWhite, moveSocketBlack } = setupRoom({ roomCode: 'ME-4', fen: '4k3/8/8/3N4/8/8/8/4K2R w - - 0 1' });
-  const originalRandom = Math.random;
-  try {
-    Math.random = () => 0;
+  await withMockedRandom(0, async () => {
     setPendingAction(room, 'mitosis', 'w');
     whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
-  } finally {
-    Math.random = originalRandom;
-  }
+    const active = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
+    const startCount = room.mutatorState.moveCount;
+    assert.equal(active.expiresAtMove, startCount + 3);
 
-  const active = room.mutatorState.activeRules.find((ar) => ar.rule.id === 'mitosis');
-  const startCount = room.mutatorState.moveCount;
-  assert.equal(active.expiresAtMove, startCount + 3);
+    await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
 
-  await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
+    assert.equal(room.mutatorState.moveCount, startCount + 4);
+  });
 
-  assert.equal(room.mutatorState.moveCount, startCount + 4);
+  assert.equal(moveSocketWhite.emitted.some((e) => e.name === 'moveRejected'), false);
+  assert.equal(moveSocketBlack.emitted.some((e) => e.name === 'moveRejected'), false);
   assert.equal(room.mutatorState.activeRules.some((ar) => ar.rule.id === 'mitosis'), false);
   const expiries = roomEvents.filter((e) => e.name === 'mutatorExpired' && e.payload.ruleId === 'mitosis');
   assert.equal(expiries.length, 1);
@@ -176,21 +180,11 @@ test('forced expiry timing uses moveCount and emits single mutatorExpired with c
 
 test('duplication on expiry creates same-type same-color piece in adjacent empty square via Math.random', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, moveSocketWhite, moveSocketBlack } = setupRoom({ roomCode: 'ME-5', fen: '4k3/8/8/3N4/8/8/8/4K2R w - - 0 1' });
-  const originalRandom = Math.random;
-  try {
-    Math.random = () => 0;
+  await withMockedRandom(0, async () => {
     setPendingAction(room, 'mitosis', 'w');
     whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
-  } finally {
-    Math.random = originalRandom;
-  }
-
-  try {
-    Math.random = () => 0;
     await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
-  } finally {
-    Math.random = originalRandom;
-  }
+  });
 
   assert.deepEqual(room.chess.get('d5'), { type: 'n', color: 'w' });
   assert.deepEqual(room.chess.get('c4'), { type: 'n', color: 'w' });
@@ -199,21 +193,11 @@ test('duplication on expiry creates same-type same-color piece in adjacent empty
 
 test('occupied adjacent squares are not overwritten during mitosis duplication', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, moveSocketWhite, moveSocketBlack } = setupRoom({ roomCode: 'ME-6', fen: '4k3/8/8/3N4/2P1P3/8/8/4K2R w - - 0 1' });
-  const originalRandom = Math.random;
-  try {
-    Math.random = () => 0;
+  await withMockedRandom(0, async () => {
     setPendingAction(room, 'mitosis', 'w');
     whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
-  } finally {
-    Math.random = originalRandom;
-  }
-
-  try {
-    Math.random = () => 0;
     await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
-  } finally {
-    Math.random = originalRandom;
-  }
+  });
 
   assert.deepEqual(room.chess.get('c4'), { type: 'p', color: 'w' });
   assert.deepEqual(room.chess.get('e4'), { type: 'p', color: 'w' });
@@ -222,16 +206,11 @@ test('occupied adjacent squares are not overwritten during mitosis duplication',
 
 test('post-expiry target movement unblocks and pending-state fields are clean', async () => {
   const { room, gameManager, io, roomEvents, whiteSocket, moveSocketWhite, moveSocketBlack } = setupRoom({ roomCode: 'ME-8', fen: '4k3/8/8/3N4/8/8/8/4K2R w - - 0 1' });
-  const originalRandom = Math.random;
-  try {
-    Math.random = () => 0;
+  await withMockedRandom(0, async () => {
     setPendingAction(room, 'mitosis', 'w');
     whiteSocket.trigger('mutatorActionResponse', { targets: 'd5' });
-  } finally {
-    Math.random = originalRandom;
-  }
-
-  await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
+    await playExpiryMoves(io, gameManager, moveSocketWhite, moveSocketBlack);
+  });
 
   await handleMove(io, moveSocketBlack, gameManager, { from: 'e8', to: 'f8' });
   await handleMove(io, moveSocketWhite, gameManager, { from: 'd5', to: 'e7' });
