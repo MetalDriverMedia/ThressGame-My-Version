@@ -355,4 +355,151 @@ test('scheduleRoomDeletion and autoResignOnTimeout lifecycle', () => {
   }
 });
 
+test('scheduleRoomDeletion deletes ended room after delay', () => {
+  const manager = new GameManager();
+  const room = manager.createRoom(false);
+  room.status = 'ended';
+  room.endedAt = Date.now();
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    scheduleRoomDeletion(manager, room.roomCode, 5);
+    assert.equal(timers.length, 1);
+    timers[0].cb();
+    assert.equal(manager.getRoom(room.roomCode), null);
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('scheduleRoomDeletion does not delete room that becomes active before timer fires', () => {
+  const manager = new GameManager();
+  const room = manager.createRoom(false);
+  room.status = 'ended';
+  room.endedAt = Date.now();
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    scheduleRoomDeletion(manager, room.roomCode, 5);
+    room.status = 'active';
+    timers[0].cb();
+    assert.equal(manager.getRoom(room.roomCode), room);
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('scheduleRoomDeletion does not delete replacement room instance under same roomCode', () => {
+  const manager = new GameManager();
+  const room = manager.createRoom(false);
+  room.status = 'ended';
+  room.endedAt = Date.now();
+  const roomCode = room.roomCode;
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    scheduleRoomDeletion(manager, roomCode, 5);
+    const replacement = new GameRoom(roomCode);
+    replacement.status = 'active';
+    manager.rooms.set(roomCode, replacement);
+    timers[0].cb();
+    assert.equal(manager.getRoom(roomCode), replacement);
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('scheduleRoomDeletion does not delete if endedAt changed before timer fires', () => {
+  const manager = new GameManager();
+  const room = manager.createRoom(false);
+  room.status = 'ended';
+  room.endedAt = 1000;
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    scheduleRoomDeletion(manager, room.roomCode, 5);
+    room.endedAt = 2000;
+    timers[0].cb();
+    assert.equal(manager.getRoom(room.roomCode), room);
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('scheduleRoomDeletion replaces duplicate cleanup timer on the same room', () => {
+  const manager = new GameManager();
+  const room = manager.createRoom(false);
+  room.status = 'ended';
+  room.endedAt = Date.now();
+
+  const originalSet = global.setTimeout;
+  const originalClear = global.clearTimeout;
+  const timers = [];
+  const cleared = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { id: Symbol('timer'), unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    global.clearTimeout = (timer) => {
+      cleared.push(timer);
+    };
+
+    scheduleRoomDeletion(manager, room.roomCode, 5);
+    const firstTimer = room.cleanupTimer;
+    scheduleRoomDeletion(manager, room.roomCode, 5);
+    assert.equal(cleared.length, 1);
+    assert.equal(cleared[0], firstTimer);
+    assert.equal(room.cleanupTimer, timers[1].t);
+  } finally {
+    global.setTimeout = originalSet;
+    global.clearTimeout = originalClear;
+  }
+});
+
+test('GameManager.deleteRoom refuses active deletion by default and allows waiting/ended deletion', () => {
+  const manager = new GameManager();
+
+  const active = manager.createRoom(false);
+  active.status = 'active';
+  assert.equal(manager.deleteRoom(active.roomCode), false);
+  assert.equal(manager.getRoom(active.roomCode), active);
+
+  const waiting = manager.createRoom(false);
+  waiting.status = 'waiting';
+  assert.equal(manager.deleteRoom(waiting.roomCode), true);
+  assert.equal(manager.getRoom(waiting.roomCode), null);
+
+  const ended = manager.createRoom(false);
+  ended.status = 'ended';
+  ended.endedAt = Date.now();
+  assert.equal(manager.deleteRoom(ended.roomCode), true);
+  assert.equal(manager.getRoom(ended.roomCode), null);
+});
+
 test.skip('room reset/rematch lifecycle coverage deferred: no reset/rematch handler currently exists', () => {});

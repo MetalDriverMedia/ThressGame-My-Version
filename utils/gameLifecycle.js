@@ -16,10 +16,42 @@ const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
  * @param {number} [delayMs] - Delay before deletion (default: 5 minutes)
  */
 function scheduleRoomDeletion(gameManager, roomCode, delayMs = ROOM_CLEANUP_DELAY_MS) {
+  if (!gameManager || typeof gameManager.getRoom !== 'function' || typeof gameManager.deleteRoom !== 'function') {
+    return;
+  }
+  const room = gameManager.getRoom(roomCode);
+  if (!room) return;
+
+  const scheduledRoom = room;
+  const scheduledEndedAt = room.endedAt;
+  if (scheduledRoom.cleanupTimer) {
+    clearTimeout(scheduledRoom.cleanupTimer);
+  }
+
   const timer = setTimeout(() => {
+    const currentRoom = gameManager.getRoom(roomCode);
+    if (!currentRoom) return;
+
+    if (currentRoom !== scheduledRoom) {
+      console.log(`[gameLifecycle] Skipped cleanup for ${roomCode}: room instance changed`);
+      return;
+    }
+    currentRoom.cleanupTimer = null;
+
+    if (currentRoom.status !== 'ended') {
+      console.log(`[gameLifecycle] Skipped cleanup for ${roomCode}: status is ${currentRoom.status}`);
+      return;
+    }
+
+    if (scheduledEndedAt && currentRoom.endedAt !== scheduledEndedAt) {
+      console.log(`[gameLifecycle] Skipped cleanup for ${roomCode}: endedAt changed`);
+      return;
+    }
+
     gameManager.deleteRoom(roomCode);
     console.log(`[gameLifecycle] Room ${roomCode} deleted after scheduled cleanup`);
   }, delayMs);
+  scheduledRoom.cleanupTimer = timer;
   // Cleanup timers should not keep Node alive when tests finish.
   if (typeof timer.unref === 'function') timer.unref();
 }
