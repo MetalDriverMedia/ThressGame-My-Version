@@ -98,6 +98,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
    * Handle bot auto-responses for mutator actions and RPS.
    */
   function botAutoMutatorResponse(room, io, gameManager) {
+    if (!room || room.status !== 'active') return;
     const ms = room.mutatorState;
     if (!ms) return;
 
@@ -248,7 +249,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       if (!data || typeof data.ruleId !== 'string') return;
 
       const room = gameManager.getRoomForSocket(socket.id);
-      if (!room || !room.mutatorState) return;
+      if (!room || room.status !== 'active' || !room.mutatorState) return;
       const ms = room.mutatorState;
       if (!ms.pendingChoice) return;
 
@@ -442,7 +443,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       if (!data || data.targets == null) return;
 
       const room = gameManager.getRoomForSocket(socket.id);
-      if (!room || !room.mutatorState) return;
+      if (!room || room.status !== 'active' || !room.mutatorState) return;
       const ms = room.mutatorState;
 
       if (ms.pendingAction && ms.pendingAction.forPlayer) {

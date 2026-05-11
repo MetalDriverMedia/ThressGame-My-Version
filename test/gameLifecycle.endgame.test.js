@@ -239,6 +239,20 @@ test('checkMutatorDeadlock and checkParryDeadlock coverage', () => {
   });
 });
 
+
+
+test('emitGameEnded and repeated terminal checks do not emit duplicate gameEnded', () => {
+  const ctx = createActiveRoom({ roomCode: 'END-DEDUP', mutatorsEnabled: true, fen: '4k3/8/8/8/8/8/8/8 w - - 0 1' });
+  ctx.room.mutatorState.activeRules = [{ rule: { id: 'short_stop' } }];
+
+  assert.equal(checkKingDestroyed(ctx.room, ctx.io, ctx.gameManager), true);
+  assert.equal(checkKingDestroyed(ctx.room, ctx.io, ctx.gameManager), false);
+  assert.equal(checkMutatorDeadlock(ctx.room, ctx.io, ctx.gameManager), false);
+  emitGameEnded(ctx.io, ctx.room, 'checkmate', 'w');
+
+  const endedEvents = ctx.roomEvents.filter((e) => e.name === 'gameEnded');
+  assert.equal(endedEvents.length, 1);
+});
 test('emitGameEnded payload stability for draw and winner, with cleanup of timers/offers', () => {
   const draw = createActiveRoom({ roomCode: 'ENDE1' });
   draw.room.quietResignFor = 'b';

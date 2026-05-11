@@ -114,6 +114,19 @@ test('selectMutator ignores ruleId not in options', () => {
   assert.equal(roomEvents.length, 0);
 });
 
+
+
+test('selectMutator after game end is ignored and does not emit activation', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorSelectionRoom({ roomCode: 'MSEL-END' });
+  const option = getRule('going_woke');
+  room.mutatorState.pendingChoice.options = [option];
+  room.status = 'ended';
+
+  whiteSocket.trigger('selectMutator', { ruleId: option.id });
+
+  assert.ok(room.mutatorState.pendingChoice);
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+});
 test('selectMutator requiresChoice creates pendingAction and emits prompt', () => {
   const { room, whiteSocket, roomEvents } = setupMutatorSelectionRoom({ roomCode: 'MSEL-G' });
   const option = {
