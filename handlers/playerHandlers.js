@@ -2,6 +2,7 @@ const { serializeBoardForClient, getPublicPlayer } = require('../gameController'
 const { scheduleRoomDeletion, emitGameEnded } = require('../utils/gameLifecycle');
 const { serializeMutatorState } = require('../mutators/mutatorEngine');
 const turnClock = require('../utils/turnClock');
+const { debugLog } = require('../utils/debugLogger');
 
 const WAITING_DISCONNECT_TIMEOUT_MS = 30 * 1000; // 30 seconds
 const ACTIVE_DISCONNECT_TIMEOUT_MS = 60 * 1000; // 60 seconds
@@ -26,6 +27,7 @@ function handleDisconnect(io, socket, gameManager, broadcastRoomUpdate) {
   // Mark player as disconnected
   player.socketId = null;
   player.active = false;
+  debugLog('playerDisconnected', { roomCode: room.roomCode, player: player.color, status: room.status });
 
   // Remove socket mapping (but keep token mapping for reconnection)
   gameManager.removeSocket(socket.id);
@@ -196,6 +198,7 @@ function handleResume(io, socket, gameManager, data) {
   if (existingTimer) {
     clearTimeout(existingTimer);
     room.disconnectTimers.delete(player.color);
+    debugLog('disconnectTimerCleared', { roomCode: room.roomCode, player: player.color });
   }
 
   // Reconnect: update socket, mark active, update mappings
@@ -244,6 +247,7 @@ function handleResume(io, socket, gameManager, data) {
     }
   }
 
+  debugLog('playerReconnected', { roomCode: room.roomCode, player: player.color, name: player.name });
   console.log(`[playerHandlers] Player ${player.name} (${player.color}) resumed in room ${room.roomCode}`);
 }
 

@@ -7,6 +7,7 @@ const { fenToBoard } = require('../mutators/boardUtils');
 const { recordWin, recordLoss, recordDraw, getTop } = require('./scoreboard');
 const turnClock = require('./turnClock');
 const { hasGlobalPendingBlocker } = require('./pendingState');
+const { debugLog } = require('./debugLogger');
 
 const ROOM_CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -65,7 +66,10 @@ function scheduleRoomDeletion(gameManager, roomCode, delayMs = ROOM_CLEANUP_DELA
  * @param {string|null} winner - Winner color ('w'/'b') or null for draws
  */
 function emitGameEnded(io, room, reason, winner) {
-  if (!room || room._gameEndedEmitted) return false;
+  if (!room || room._gameEndedEmitted) {
+    if (room?._gameEndedEmitted) debugLog('gameEndedDuplicateSuppressed', { roomCode: room.roomCode, reason, winner, status: room.status });
+    return false;
+  }
   room._gameEndedEmitted = true;
 
   // Stop turn clock and clear any standing quiet-resign offer
@@ -83,6 +87,7 @@ function emitGameEnded(io, room, reason, winner) {
     payload.loser = winner === 'w' ? 'b' : 'w';
   }
   io.to(room.roomCode).emit('gameEnded', payload);
+  debugLog('gameEnded', { roomCode: room.roomCode, reason, winner, status: room.status, moveCount: room.mutatorState?.moveCount });
 
   // Update scoreboard (skip bot games, quiet resigns, and custom-ruleset games)
   if (reason === 'quiet-resign') return true;
@@ -115,6 +120,7 @@ function emitGameEnded(io, room, reason, winner) {
 function autoResignOnTimeout(room, io, gameManager, stallingColor) {
   if (!room || room.status !== 'active') return;
   const winnerColor = stallingColor === 'w' ? 'b' : 'w';
+  debugLog('timeoutAutoResign', { roomCode: room.roomCode, forColor: stallingColor, winner: winnerColor, reason: 'timeout' });
   room.endGame('timeout', winnerColor);
   emitGameEnded(io, room, 'timeout', winnerColor);
   scheduleRoomDeletion(gameManager, room.roomCode);
@@ -141,6 +147,7 @@ function checkKingDestroyed(room, io, gameManager) {
   else if (hasWhiteKing && !hasBlackKing) winner = 'w';
   else reason = 'draw'; // both kings gone (unlikely but handle it)
 
+  debugLog('kingDestroyed', { roomCode: room.roomCode, reason, winner, status: room.status, moveCount: room.mutatorState?.moveCount });
   room.endGame(reason, winner);
   emitGameEnded(io, room, reason, winner);
   scheduleRoomDeletion(gameManager, room.roomCode);
@@ -158,18 +165,19 @@ function triggerCoinFlip(room, io, forColor) {
 
   // Do not prompt/resolve All on Red coin flips while other global pending
   // mutator interactions are unresolved.
-  if (hasGlobalPendingBlocker(room)) return;
+  if (hasGlobalPendingBlocker(room)) { debugLog('coinFlipSuppressed', { roomCode: room.roomCode, reason: 'globalPendingBlocker', forColor }); return; }
   // Risk It Rook manual flip flow is separate from All On Red and must resolve
   // first to avoid overlapping prompt/result lifecycles.
-  if (room._riskItRookPending) return;
+  if (room._riskItRookPending) { debugLog('coinFlipSuppressed', { roomCode: room.roomCode, reason: 'riskItRookPending', forColor }); return; }
 
   // Skip if a flip already happened this move (prevents double-flip when rule choice
   // and post-move coin flip both fire in the same turn)
-  if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.moveCount) return;
-  if (ms.pendingCoinFlip && ms.pendingCoinFlip.moveCount === ms.moveCount) return;
+  if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.moveCount) { debugLog('coinFlipSuppressed', { roomCode: room.roomCode, reason: 'alreadyFlippedThisMove', forColor }); return; }
+  if (ms.pendingCoinFlip && ms.pendingCoinFlip.moveCount === ms.moveCount) { debugLog('coinFlipSuppressed', { roomCode: room.roomCode, reason: 'flipPendingThisMove', forColor }); return; }
 
   const nextPlayer = room.getPlayer(forColor);
 
+  debugLog('coinFlipTrigger', { roomCode: room.roomCode, forColor, moveCount: ms.moveCount, manual: !!room.manualCoinFlip });
   if (room.manualCoinFlip) {
     ms.pendingCoinFlip = { forPlayer: forColor, moveCount: ms.moveCount };
     if (nextPlayer && nextPlayer.isBot) {
@@ -179,17 +187,21 @@ function triggerCoinFlip(room, io, forColor) {
         if (room.status !== 'active' || !ms.pendingCoinFlip) return;
         if (ms.pendingCoinFlip.forPlayer !== forColor || ms.pendingCoinFlip.moveCount !== ms.moveCount) return;
         const result = Math.random() < 0.5 ? 'heads' : 'tails';
-        if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.moveCount) return;
+        if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.moveCount) { debugLog('coinFlipSuppressed', { roomCode: room.roomCode, reason: 'alreadyFlippedThisMove', forColor }); return; }
         ms.coinFlipResult = { result, moveCount: ms.moveCount };
+    debugLog('coinFlipAutoResult', { roomCode: room.roomCode, result, forColor, moveCount: ms.moveCount });
         ms.pendingCoinFlip = null;
         io.to(room.roomCode).emit('coinFlipResult', { result, forPlayer: forColor, manual: true });
+        debugLog('coinFlipBotDelayedResult', { roomCode: room.roomCode, result, forColor, moveCount: ms.moveCount });
       }, flipDelay);
     } else {
       io.to(room.roomCode).emit('coinFlipPrompt', { forPlayer: forColor });
+      debugLog('coinFlipPrompt', { roomCode: room.roomCode, forColor, moveCount: ms.moveCount });
     }
   } else {
     const result = Math.random() < 0.5 ? 'heads' : 'tails';
     ms.coinFlipResult = { result, moveCount: ms.moveCount };
+    debugLog('coinFlipAutoResult', { roomCode: room.roomCode, result, forColor, moveCount: ms.moveCount });
     if (nextPlayer && nextPlayer.isBot) {
       io.to(room.roomCode).emit('coinFlipResult', { result, forPlayer: forColor, manual: false });
     } else {
@@ -217,6 +229,7 @@ function checkCoinFlipSkipTurn(room, io, forColor) {
   const parts = fen.split(' ');
   parts[1] = parts[1] === 'w' ? 'b' : 'w'; // Swap active color
   room.chess.load(parts.join(' '), { skipValidation: true });
+  debugLog('coinFlipSkipTurn', { roomCode: room.roomCode, forColor, reason: 'tailsNoKingMoves' });
 
   // Notify clients
   io.to(room.roomCode).emit('moveApplied', {
@@ -304,6 +317,7 @@ function checkParryDeadlock(room, io, gameManager) {
     const inCheck = isKingInCheck(board, currentTurn, room.mutatorState);
     const winner = inCheck ? (currentTurn === 'w' ? 'b' : 'w') : null;
     const reason = inCheck ? 'checkmate' : 'stalemate';
+    debugLog('parryDeadlock', { roomCode: room.roomCode, reason, winner, status: room.status, moveCount: room.mutatorState?.moveCount });
     room.endGame(reason, winner);
     emitGameEnded(io, room, reason, winner);
     scheduleRoomDeletion(gameManager, room.roomCode);

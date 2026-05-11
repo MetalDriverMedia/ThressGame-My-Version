@@ -14,6 +14,7 @@ const { validateRoomIntegrity } = require('../utils/roomIntegrity');
 const { isMoveAllowed } = require('../mutators/legalMoveEngine');
 const { clearStaleLockedSquares } = require('../mutators/lockedSquares');
 const { getMovePendingBlocker } = require('../utils/pendingState');
+const { debugLog } = require('../utils/debugLogger');
 
 /**
  * End-of-game condition descriptors. Order matters -- checkmate before general isDraw.
@@ -60,23 +61,33 @@ async function handleMove(io, socket, gameManager, data) {
   const rejectResult = (reason, message) => buildResult('rejected', { reason, message });
   const ignoredResult = (reason, message) => buildResult('ignored', { reason, message });
   const { from, to, promotion } = data || {};
+  const room = gameManager.getRoomForSocket(socket.id);
+  debugLog('moveAttempt', {
+    roomCode: room?.roomCode,
+    socketId: socket?.id,
+    from, to, promotion,
+    currentTurn: room?.chess?.turn?.(),
+    status: room?.status,
+  });
 
   // Validate square notation
   if (!validateSquare(from) || !validateSquare(to)) {
     socket.emit('moveRejected', { error: 'Invalid square notation.' });
+    debugLog('moveRejected', { roomCode: room?.roomCode, reason: 'invalidSquare', message: 'Invalid square notation.', from, to });
     return rejectResult('invalidSquare', 'Invalid square notation.');
   }
 
   // Find room and player from socket
-  const room = gameManager.getRoomForSocket(socket.id);
   if (!room) {
     socket.emit('moveRejected', { error: 'You are not in a room.' });
+    debugLog('moveRejected', { reason: 'missingRoom', message: 'You are not in a room.', from, to });
     return ignoredResult('missingRoom', 'You are not in a room.');
   }
 
   const player = room.getPlayerBySocket(socket.id);
   if (!player) {
     socket.emit('moveRejected', { error: 'Player not found in room.' });
+    debugLog('moveRejected', { roomCode: room.roomCode, reason: 'missingPlayer', message: 'Player not found in room.', from, to });
     return ignoredResult('missingPlayer', 'Player not found in room.');
   }
 
@@ -108,6 +119,7 @@ async function handleMove(io, socket, gameManager, data) {
   const pendingBlocker = getMovePendingBlocker(room, player.color);
   if (pendingBlocker) {
     socket.emit('moveRejected', { message: pendingBlocker.message });
+    debugLog('moveDeferred', { roomCode: room.roomCode, player: player.color, reason: 'pendingState', pending: pendingBlocker.key, from, to });
     return rejectResult(pendingBlocker.key, pendingBlocker.message);
   }
 
@@ -170,6 +182,7 @@ async function handleMove(io, socket, gameManager, data) {
         attacker: player.color,
         defender: opponentColor,
       });
+      debugLog('moveDeferred', { roomCode: room.roomCode, reason: 'pendingRPS', pending: 'pendingRPS', from, to, attacker: player.color, defender: opponentColor });
       return buildResult('deferred', { reason: 'pendingRPS', pending: 'pendingRPS' });
     }
     if (room.mutatorState.rpsResolved) {
@@ -382,6 +395,20 @@ async function handleMove(io, socket, gameManager, data) {
     piece: moveResult.piece,
     promotion: moveResult.promotion || null,
   });
+  debugLog('moveApplied', {
+    roomCode: room.roomCode,
+    color: moveResult.color,
+    from: moveResult.from,
+    to: moveResult.to,
+    san: moveResult.san,
+    piece: moveResult.piece,
+    captured: moveResult.captured || null,
+    flags: moveResult.flags,
+    promotion: moveResult.promotion || null,
+    moveHistoryLength: room.moveHistory.length,
+    moveCount: room.mutatorState?.moveCount,
+    fen: room.chess.fen(),
+  });
 
   // Clear locked squares -- the lock only applies to the turn when the piece was placed
   if (room.mutatorState?.boardModifiers?.lockedSquares?.length) {
@@ -413,6 +440,7 @@ async function handleMove(io, socket, gameManager, data) {
   const gameEnded = await checkGameEnd(room, io, gameManager, player);
   if (gameEnded) {
     turnClock.clearClock(room);
+    debugLog('moveEnded', { roomCode: room.roomCode, reason: room.endReason || 'gameEnded', winner: room.winner || null, move: { from, to } });
     return buildResult('ended', { reason: room.endReason || 'gameEnded' });
   }
 

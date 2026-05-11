@@ -1,6 +1,7 @@
 const { Chess } = require('chess.js');
 const { generateRoomCode } = require('./utils/roomCodes');
 const { createMutatorState } = require('./mutators/mutatorEngine');
+const { debugLog } = require('./utils/debugLogger');
 
 class GameRoom {
   constructor(roomCode) {
@@ -152,6 +153,7 @@ class GameManager {
     const room = new GameRoom(roomCode);
     room.isPrivate = isPrivate;
     this.rooms.set(roomCode, room);
+    debugLog('roomCreated', { roomCode, isPrivate });
     return room;
   }
 
@@ -238,6 +240,7 @@ class GameManager {
     }
 
     this.rooms.delete(roomCode);
+    debugLog('roomDeleted', { roomCode });
     return true;
   }
 

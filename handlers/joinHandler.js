@@ -2,6 +2,7 @@ const { checkProfanity, hasInvalidCharacters } = require('../utils/validation');
 const { generatePlayerHash } = require('../utils/playerIdentity');
 const { createPlayer, assignColor, serializeBoardForClient, getPublicPlayer } = require('../gameController');
 const { handleSpectateRoom } = require('./spectatorHandler');
+const { debugLog } = require('../utils/debugLogger');
 
 const MAX_NAME_LENGTH = 20;
 
@@ -89,6 +90,7 @@ function handleCreateRoom(io, socket, gameManager, data, broadcastRoomUpdate) {
 
   const player = createPlayer(socket.id, name, playerHash, color, false);
   room.addPlayer(player);
+  debugLog('roomJoined', { roomCode: room.roomCode, player: player.color });
 
   // Register socket and token mappings
   gameManager.setSocketRoom(socket.id, room.roomCode);
