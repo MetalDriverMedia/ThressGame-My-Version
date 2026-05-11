@@ -150,10 +150,14 @@ function checkKingDestroyed(room, io, gameManager) {
 function triggerCoinFlip(room, io, forColor) {
   const ms = room.mutatorState;
   if (!ms) return;
+  if (room.status !== 'active') return;
 
   // Do not prompt/resolve All on Red coin flips while other global pending
   // mutator interactions are unresolved.
   if (hasGlobalPendingBlocker(room)) return;
+  // Risk It Rook manual flip flow is separate from All On Red and must resolve
+  // first to avoid overlapping prompt/result lifecycles.
+  if (room._riskItRookPending) return;
 
   // Skip if a flip already happened this move (prevents double-flip when rule choice
   // and post-move coin flip both fire in the same turn)
@@ -169,7 +173,9 @@ function triggerCoinFlip(room, io, forColor) {
       const flipDelay = 800 + Math.random() * 400; // 0.8-1.2s
       setTimeout(() => {
         if (room.status !== 'active' || !ms.pendingCoinFlip) return;
+        if (ms.pendingCoinFlip.forPlayer !== forColor || ms.pendingCoinFlip.moveCount !== ms.moveCount) return;
         const result = Math.random() < 0.5 ? 'heads' : 'tails';
+        if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.moveCount) return;
         ms.coinFlipResult = { result, moveCount: ms.moveCount };
         ms.pendingCoinFlip = null;
         io.to(room.roomCode).emit('coinFlipResult', { result, forPlayer: forColor, manual: true });

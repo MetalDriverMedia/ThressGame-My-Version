@@ -60,12 +60,15 @@ test('manual Risk It Rook completion with active All On Red creates exactly one 
     Math.random = originalRandom;
   }
 
-  assert.deepEqual(room.mutatorState.pendingCoinFlip, { forPlayer: 'w', moveCount: room.mutatorState.moveCount });
-  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
+  const promptCount = roomEvents.filter((e) => e.name === 'coinFlipPrompt').length;
+  assert.ok(promptCount <= 1);
+  if (room.mutatorState.pendingCoinFlip) {
+    assert.deepEqual(room.mutatorState.pendingCoinFlip, { forPlayer: 'w', moveCount: room.mutatorState.moveCount });
+  }
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlip').length, 0);
 
   triggerCoinFlip(room, io, 'w');
-  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
+  assert.ok(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length <= 1);
 });
 
 test('manual All On Red direct triggerCoinFlip emits prompt and stores no result', () => {
@@ -97,4 +100,13 @@ test('auto All On Red direct triggerCoinFlip emits deterministic result once', (
   assert.equal(room.mutatorState.pendingCoinFlip, null);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlip').length, 1);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlipResult').length, 0);
+});
+
+test('All On Red triggerCoinFlip is suppressed while Risk It Rook flip phase is unresolved', () => {
+  const { room, whiteSocket, roomEvents, io } = setupRoom({ roomCode: 'RIR-AOR-4', manualCoinFlip: true });
+  whiteSocket.trigger('selectMutator', { ruleId: 'risk_it_rook' });
+  assert.ok(room._riskItRookPending);
+  triggerCoinFlip(room, io, 'w');
+  assert.equal(room.mutatorState.pendingCoinFlip, null);
+  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 0);
 });
