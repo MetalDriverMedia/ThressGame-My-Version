@@ -420,7 +420,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
 
       // If All on Red just activated, trigger immediate coin flip before deadlock checks
       // so legal-move filtering sees an explicit pending/resulted flip state.
-      if (option.id === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
+      const deferAllOnRedFlipForRiskItRook = option.id === 'risk_it_rook';
+      if (!deferAllOnRedFlipForRiskItRook && (option.id === 'all_on_red' || isRuleActive(ms, 'all_on_red'))) {
         const nextTurn = room.chess.turn();
         triggerCoinFlip(room, io, nextTurn);
         if (!room.manualCoinFlip) {
@@ -771,7 +772,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         checkMutatorDeadlock(room, io, gameManager);
 
         // If All on Red is active, trigger immediate coin flip
-        if (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
+        const deferAllOnRedFlipForRiskItRook = ruleId === 'risk_it_rook';
+        if (!deferAllOnRedFlipForRiskItRook && (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red'))) {
           const nextTurn = room.chess.turn();
           triggerCoinFlip(room, io, nextTurn);
           if (!room.manualCoinFlip) {
@@ -848,7 +850,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         checkKingDestroyed(room, io, gameManager);
         checkMutatorDeadlock(room, io, gameManager);
 
-        if (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
+        const deferAllOnRedFlipForRiskItRook = ruleId === 'risk_it_rook';
+        if (!deferAllOnRedFlipForRiskItRook && (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red'))) {
           const nextTurn = room.chess.turn();
           triggerCoinFlip(room, io, nextTurn);
           if (!room.manualCoinFlip) {
