@@ -420,7 +420,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
 
       // If All on Red just activated, trigger immediate coin flip before deadlock checks
       // so legal-move filtering sees an explicit pending/resulted flip state.
-      if (option.id === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
+      const deferAllOnRedFlipForRiskItRook = option.id === 'risk_it_rook';
+      if (!deferAllOnRedFlipForRiskItRook && (option.id === 'all_on_red' || isRuleActive(ms, 'all_on_red'))) {
         const nextTurn = room.chess.turn();
         triggerCoinFlip(room, io, nextTurn);
         if (!room.manualCoinFlip) {
@@ -771,7 +772,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         checkMutatorDeadlock(room, io, gameManager);
 
         // If All on Red is active, trigger immediate coin flip
-        if (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
+        const deferAllOnRedFlipForRiskItRook = ruleId === 'risk_it_rook';
+        if (!deferAllOnRedFlipForRiskItRook && (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red'))) {
           const nextTurn = room.chess.turn();
           triggerCoinFlip(room, io, nextTurn);
           if (!room.manualCoinFlip) {
@@ -848,7 +850,8 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         checkKingDestroyed(room, io, gameManager);
         checkMutatorDeadlock(room, io, gameManager);
 
-        if (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red')) {
+        const deferAllOnRedFlipForRiskItRook = ruleId === 'risk_it_rook';
+        if (!deferAllOnRedFlipForRiskItRook && (ruleId === 'all_on_red' || isRuleActive(ms, 'all_on_red'))) {
           const nextTurn = room.chess.turn();
           triggerCoinFlip(room, io, nextTurn);
           if (!room.manualCoinFlip) {
@@ -890,14 +893,15 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       if (!data || (data.choice !== 'heads' && data.choice !== 'tails')) return;
 
       const room = gameManager.getRoomForSocket(socket.id);
-      if (!room || !room.mutatorState) return;
+      if (!room || room.status !== 'active' || !room.mutatorState) return;
       const ms = room.mutatorState;
       if (!ms.pendingCoinFlip) return;
+      if (ms.coinFlipResult && ms.coinFlipResult.moveCount === ms.pendingCoinFlip.moveCount) return;
       const player = room.getPlayerBySocket(socket.id);
       if (!player || player.color !== ms.pendingCoinFlip.forPlayer) return;
 
       const choice = data.choice;
-      ms.coinFlipResult = { result: choice, moveCount: ms.moveCount };
+      ms.coinFlipResult = { result: choice, moveCount: ms.pendingCoinFlip.moveCount };
       ms.pendingCoinFlip = null;
 
       io.to(room.roomCode).emit('coinFlipResult', { result: choice, forPlayer: player.color, manual: true });
@@ -1044,6 +1048,11 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
     io.to(room.roomCode).emit('mutatorBoardUpdate', payload);
     checkKingDestroyed(room, io, gameManager);
     checkMutatorDeadlock(room, io, gameManager);
+    if (room.status === 'active' && isRuleActive(ms, 'all_on_red')) {
+      const nextTurn = room.chess.turn();
+      triggerCoinFlip(room, io, nextTurn);
+      if (!room.manualCoinFlip) checkCoinFlipSkipTurn(room, io, nextTurn);
+    }
   }
 
   return { botAutoMutatorResponse, registerSocketHandlers };

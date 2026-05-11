@@ -277,3 +277,32 @@ test('triggerCoinFlip does not run while pendingAction, pendingSecondAction, or 
   assert.equal(room.mutatorState.pendingCoinFlip, null);
   assert.equal(roomEvents.some((e) => e.name === 'coinFlipPrompt' || e.name === 'coinFlip' || e.name === 'coinFlipResult'), false);
 });
+
+test('triggerCoinFlip does nothing when room is not active', () => {
+  const { room, io, roomEvents } = setupCoinFlipRoom({ roomCode: 'CFLP-INACTIVE', manualCoinFlip: true });
+  room.status = 'ended';
+  triggerCoinFlip(room, io, 'w');
+  assert.equal(room.mutatorState.pendingCoinFlip, null);
+  assert.equal(room.mutatorState.coinFlipResult, null);
+  assert.equal(roomEvents.length, 0);
+});
+
+test('coinFlipChoice duplicate and late submissions do not overwrite or re-emit', () => {
+  const { room, whiteSocket, roomEvents } = setupCoinFlipRoom({ roomCode: 'CFLP-DUPE', manualCoinFlip: true });
+  room.mutatorState.pendingCoinFlip = { forPlayer: 'w', moveCount: room.mutatorState.moveCount };
+  whiteSocket.trigger('coinFlipChoice', { choice: 'heads' });
+  whiteSocket.trigger('coinFlipChoice', { choice: 'tails' });
+  whiteSocket.trigger('coinFlipChoice', { choice: 'heads' });
+  assert.deepEqual(room.mutatorState.coinFlipResult, { result: 'heads', moveCount: room.mutatorState.moveCount });
+  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipResult').length, 1);
+});
+
+test('coinFlipChoice after game end does not mutate pendingCoinFlip', () => {
+  const { room, whiteSocket, roomEvents } = setupCoinFlipRoom({ roomCode: 'CFLP-END', manualCoinFlip: true });
+  room.mutatorState.pendingCoinFlip = { forPlayer: 'w', moveCount: room.mutatorState.moveCount };
+  room.status = 'ended';
+  whiteSocket.trigger('coinFlipChoice', { choice: 'tails' });
+  assert.deepEqual(room.mutatorState.pendingCoinFlip, { forPlayer: 'w', moveCount: room.mutatorState.moveCount });
+  assert.equal(room.mutatorState.coinFlipResult, null);
+  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipResult').length, 0);
+});

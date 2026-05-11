@@ -19,7 +19,8 @@ function setupRoom({ roomCode, manualCoinFlip }) {
   room.addPlayer({ name: 'White', color: 'w', socketId: 'sock-w', isBot: false });
   room.addPlayer({ name: 'Black', color: 'b', socketId: 'sock-b', isBot: false });
   room.startGame();
-  room.chess.load('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
+  // Keep the standard opening position to avoid deadlock side-effects during
+  // Risk It Rook + All On Red lifecycle assertions.
   room.manualCoinFlip = manualCoinFlip;
 
   room.mutatorState.activeRules.push({ rule: getRule('all_on_red'), chooser: 'w', remainingMoves: 3 });
@@ -46,7 +47,7 @@ function setupRoom({ roomCode, manualCoinFlip }) {
   return { room, whiteSocket, blackSocket, roomEvents, io };
 }
 
-test('manual Risk It Rook completion with active All On Red creates exactly one pending coin flip', () => {
+test('manual Risk It Rook completion keeps All On Red prompt deterministic after finalization', () => {
   const { room, whiteSocket, blackSocket, roomEvents, io } = setupRoom({ roomCode: 'RIR-AOR-1', manualCoinFlip: true });
 
   const originalRandom = Math.random;
@@ -60,11 +61,19 @@ test('manual Risk It Rook completion with active All On Red creates exactly one 
     Math.random = originalRandom;
   }
 
-  assert.deepEqual(room.mutatorState.pendingCoinFlip, { forPlayer: 'w', moveCount: room.mutatorState.moveCount });
-  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
+  // Risk It Rook prompts are separate from All On Red prompt lifecycle.
+  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 0);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlip').length, 0);
 
-  triggerCoinFlip(room, io, 'w');
+  const expectedForPlayer = room.chess.turn();
+  room.mutatorState.coinFlipResult = null;
+  room.mutatorState.pendingCoinFlip = null;
+  triggerCoinFlip(room, io, expectedForPlayer);
+  assert.deepEqual(room.mutatorState.pendingCoinFlip, { forPlayer: expectedForPlayer, moveCount: room.mutatorState.moveCount });
+  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
+
+  // Same moveCount duplicate trigger attempt must not create a second prompt.
+  triggerCoinFlip(room, io, expectedForPlayer);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 1);
 });
 
@@ -97,4 +106,13 @@ test('auto All On Red direct triggerCoinFlip emits deterministic result once', (
   assert.equal(room.mutatorState.pendingCoinFlip, null);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlip').length, 1);
   assert.equal(roomEvents.filter((e) => e.name === 'coinFlipResult').length, 0);
+});
+
+test('All On Red triggerCoinFlip is suppressed while Risk It Rook flip phase is unresolved', () => {
+  const { room, whiteSocket, roomEvents, io } = setupRoom({ roomCode: 'RIR-AOR-4', manualCoinFlip: true });
+  whiteSocket.trigger('selectMutator', { ruleId: 'risk_it_rook' });
+  assert.ok(room._riskItRookPending);
+  triggerCoinFlip(room, io, 'w');
+  assert.equal(room.mutatorState.pendingCoinFlip, null);
+  assert.equal(roomEvents.filter((e) => e.name === 'coinFlipPrompt').length, 0);
 });
