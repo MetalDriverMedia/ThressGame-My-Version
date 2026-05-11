@@ -2,6 +2,7 @@
 
 const { resolveRPS, VALID_RPS_CHOICES } = require('../utils/rps');
 const { validateSquare } = require('../utils/validation');
+const { debugLog } = require('../utils/debugLogger');
 const {
   activateRule, serializeMutatorState, isRuleActive,
 } = require('../mutators/mutatorEngine');
@@ -36,6 +37,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       const outcome = resolveRPS(rps.attackerChoice, rps.defenderChoice);
       const captureProceeds = outcome !== 'defender';
 
+      debugLog('rpsResult', { roomCode: room.roomCode, attacker: rps.attacker, defender: rps.defender, outcome });
       io.to(room.roomCode).emit('rpsResult', {
         attacker: rps.attacker,
         defender: rps.defender,
@@ -274,6 +276,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         }
         if (pawnCount < 2) {
           ms.pendingChoice = null;
+          debugLog('mutatorSelected', { roomCode: room.roomCode, ruleId, chooser: player.color });
           io.to(room.roomCode).emit('mutatorSelected', { ruleId });
           validateRoomIntegrity(room, `mutatorHandler:activate:${ruleId}`);
           io.to(room.roomCode).emit('mutatorActivated', {
@@ -328,6 +331,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
           rule: option,
         };
         ms.pendingChoice = null;
+        debugLog('mutatorChosen', { roomCode: room.roomCode, ruleId: option.id, chooser: player.color });
         io.to(room.roomCode).emit('mutatorChosen', {
           rule: { id: option.id, name: option.name, description: option.description, duration: option.duration },
           chooser: player.color,
@@ -372,6 +376,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
           actionPrompt = `Select target for ${option.name}`;
         }
 
+        debugLog('mutatorActionPrompt', { roomCode: room.roomCode, player: player.color, ruleId });
         socket.emit('mutatorAction', {
           ruleId,
           actionType: option.choiceType,
@@ -414,6 +419,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
         delete room._riskItRookResult;
       }
 
+      debugLog('mutatorActivated', { roomCode: room.roomCode, ruleId, chooser: player.color, moveCount: ms.moveCount });
       io.to(room.roomCode).emit('mutatorActivated', activatedPayload);
 
       // Check if a king was destroyed by the instant mutator activation
@@ -440,6 +446,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
     });
 
     socket.on('mutatorActionResponse', (data) => {
+      debugLog('mutatorActionResponse', { roomCode: gameManager.getRoomForSocket(socket.id)?.roomCode, socketId: socket.id, choiceType: data?.actionType });
       if (!data || data.targets == null) return;
 
       const room = gameManager.getRoomForSocket(socket.id);
@@ -891,6 +898,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
     });
 
     socket.on('coinFlipChoice', (data) => {
+      debugLog('coinFlipChoice', { roomCode: gameManager.getRoomForSocket(socket.id)?.roomCode, choice: data?.choice, socketId: socket.id });
       if (!data || (data.choice !== 'heads' && data.choice !== 'tails')) return;
 
       const room = gameManager.getRoomForSocket(socket.id);
@@ -905,6 +913,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       ms.coinFlipResult = { result: choice, moveCount: ms.pendingCoinFlip.moveCount };
       ms.pendingCoinFlip = null;
 
+      debugLog('riskItRookFlipResult', { roomCode: room.roomCode, result: choice, forPlayer: player.color });
       io.to(room.roomCode).emit('coinFlipResult', { result: choice, forPlayer: player.color, manual: true });
 
       // If tails and king has no moves, skip turn

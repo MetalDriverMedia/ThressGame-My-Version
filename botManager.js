@@ -8,6 +8,7 @@ const { getBestMove, evaluateBoard } = require('./bots/botAI');
 const { getEffectiveLegalMoves } = require('./mutators/legalMoveEngine');
 const { COLUMNS, ROWS, getIntermediateSquares } = require('./mutators/boardUtils');
 const { checkMutatorDeadlock } = require('./utils/gameLifecycle');
+const { debugLog } = require('./utils/debugLogger');
 
 let botCounter = 0;
 
@@ -117,7 +118,7 @@ function addBotToRoom(room, color) {
  * @param {Function} [afterMoveFn] - Optional callback after move (e.g. botAutoMutatorResponse)
  */
 function scheduleBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) {
-  if (!room || room.status !== 'active') return;
+  if (!room || room.status !== 'active') { debugLog('botScheduledMoveSkipped', { roomCode: room?.roomCode, reason: 'inactiveRoom' }); return; }
 
   // Determine whose turn it is
   const currentTurn = room.chess.turn();
@@ -179,6 +180,7 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
   // Get shared effective legal moves (respects active restrictions)
   let allMoves = getBotMovePool(room, currentTurn);
   if (allMoves.length === 0) {
+    debugLog('botNoLegalMoves', { roomCode: room.roomCode, player: currentTurn });
     checkMutatorDeadlock(room, io, gameManager);
     return;
   }
@@ -222,6 +224,7 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
     }
 
     if (bestOverallMove) {
+      debugLog('botMoveSelected', { roomCode: room.roomCode, player: currentTurn, from: bestOverallMove.from, to: bestOverallMove.to });
       selectedMove = bestOverallMove;
     }
 
@@ -260,6 +263,7 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
   });
 
   try {
+    debugLog('botMoveDecisionStart', { roomCode: room.roomCode, player: currentTurn, movePool: allMoves.length });
     const moveResult = await handleMoveFn(io, fakeSocket, gameManager, {
       from: selectedMove.from,
       to: selectedMove.to,
@@ -274,6 +278,7 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
 
     const progressed = beforeSig !== afterSig || !!(moveResult && (moveResult.applied || moveResult.pending));
     if (!progressed) {
+      debugLog('botMoveRejected', { roomCode: room.roomCode, player: currentTurn, from: selectedMove.from, to: selectedMove.to });
       const staleKey = `${bot.color}|${selectedMove.from}|${selectedMove.to}|${beforeSig}`;
       if (room._botStaleAttempt === staleKey) return;
       room._botStaleAttempt = staleKey;
