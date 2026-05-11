@@ -29,6 +29,25 @@ import {
 } from './socketHandlers.js';
 
 const RESUME_TIMEOUT_MS = 3500;
+let resumeTimeoutId = null;
+
+function clearResumeGuard() {
+  if (resumeTimeoutId) {
+    clearTimeout(resumeTimeoutId);
+    resumeTimeoutId = null;
+  }
+  state.resumePending = false;
+}
+
+function startResumeGuard() {
+  clearResumeGuard();
+  state.resumePending = true;
+  resumeTimeoutId = setTimeout(() => {
+    if (!state.resumePending) return;
+    console.log('[boot] resume timeout recovery');
+    showResumeRecovery('Session resume timed out.');
+  }, RESUME_TIMEOUT_MS);
+}
 
 function clearSavedSessionAndRecover() {
   try {
@@ -44,7 +63,7 @@ function clearSavedSessionAndRecover() {
   }
 
   state.myToken = null;
-  state.resumePending = false;
+  clearResumeGuard();
   state.resumeRecoveryShown = false;
 
   showPanel('landing');
@@ -83,12 +102,14 @@ function showResumeRecovery(reason = 'Unable to restore your previous session.')
   retryBtn.type = 'button';
   retryBtn.textContent = 'Retry Resume';
   retryBtn.addEventListener('click', () => {
-    actionWrap.remove();
-    state.resumeRecoveryShown = false;
     if (state.myToken && state.socket && state.socket.connected) {
+      actionWrap.remove();
+      state.resumeRecoveryShown = false;
       console.log('[boot] resumeSession emitted (manual retry)');
-      state.resumePending = true;
       state.socket.emit('resumeSession', { token: state.myToken });
+      startResumeGuard();
+    } else {
+      flashStatus('Socket is not connected yet. Keep this screen open and retry.', 3500);
     }
   });
 
@@ -173,6 +194,20 @@ function connectSocket() {
 
 (function init() {
   console.log('[boot] init start');
+  state.showResumeRecovery = showResumeRecovery;
+  state.clearSavedSessionAndRecover = clearSavedSessionAndRecover;
+  state.startResumeGuard = startResumeGuard;
+  state.clearResumeGuard = clearResumeGuard;
+
+  const savedToken = loadFromStorage(STORAGE_KEYS.token);
+  if (savedToken) {
+    console.log('[boot] saved token detected');
+    state.myToken = savedToken;
+    elements.landingPanel?.classList.add('hidden');
+  } else {
+    showPanel('landing');
+  }
+
   // Restore saved name or use default
   const savedName = loadFromStorage(STORAGE_KEYS.name);
   if (elements.nameInput) {
@@ -198,7 +233,7 @@ function connectSocket() {
     }
   }
 
-  // Connect socket
+  // Connect socket after startup recovery handlers and saved token are in state.
   connectSocket();
 
   // Check for ?watch= query param
@@ -222,23 +257,4 @@ function connectSocket() {
   fetchScoreboard();
   fetchMotd();
 
-  // Try resume session
-  const savedToken = loadFromStorage(STORAGE_KEYS.token);
-  if (savedToken) {
-    console.log('[boot] saved token detected');
-    state.myToken = savedToken;
-    state.resumePending = true;
-    elements.landingPanel?.classList.add('hidden');
-    setTimeout(() => {
-      if (state.resumePending) {
-        console.log('[boot] resume timeout recovery');
-        showResumeRecovery('Session resume timed out.');
-      }
-    }, RESUME_TIMEOUT_MS);
-  } else {
-    showPanel('landing');
-  }
-
-  state.showResumeRecovery = showResumeRecovery;
-  state.clearSavedSessionAndRecover = clearSavedSessionAndRecover;
 })();

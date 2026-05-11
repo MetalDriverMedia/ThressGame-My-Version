@@ -143,6 +143,8 @@ export const state = {
   resumeRecoveryShown: false,
   showResumeRecovery: null,
   clearSavedSessionAndRecover: null,
+  startResumeGuard: null,
+  clearResumeGuard: null,
 };
 
 // --- DOM Caches -----------------------------------------------------
