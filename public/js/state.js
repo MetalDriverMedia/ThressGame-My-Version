@@ -137,6 +137,14 @@ export const state = {
 
   // Animated background
   currentBgEffect: 1,
+
+  // Startup resume recovery
+  resumePending: false,
+  resumeRecoveryShown: false,
+  showResumeRecovery: null,
+  clearSavedSessionAndRecover: null,
+  startResumeGuard: null,
+  clearResumeGuard: null,
 };
 
 // --- DOM Caches -----------------------------------------------------

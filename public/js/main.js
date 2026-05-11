@@ -28,6 +28,101 @@ import {
   onRateLimited,
 } from './socketHandlers.js';
 
+const RESUME_TIMEOUT_MS = 3500;
+let resumeTimeoutId = null;
+
+function clearResumeGuard() {
+  if (resumeTimeoutId) {
+    clearTimeout(resumeTimeoutId);
+    resumeTimeoutId = null;
+  }
+  state.resumePending = false;
+}
+
+function startResumeGuard() {
+  clearResumeGuard();
+  state.resumePending = true;
+  resumeTimeoutId = setTimeout(() => {
+    if (!state.resumePending) return;
+    console.log('[boot] resume timeout recovery');
+    showResumeRecovery('Session resume timed out.');
+  }, RESUME_TIMEOUT_MS);
+}
+
+function clearSavedSessionAndRecover() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.token);
+    localStorage.removeItem(STORAGE_KEYS.name);
+  } catch {
+    // Storage may be unavailable.
+  }
+  try {
+    sessionStorage.clear();
+  } catch {
+    // sessionStorage may be unavailable.
+  }
+
+  state.myToken = null;
+  clearResumeGuard();
+  state.resumeRecoveryShown = false;
+
+  showPanel('landing');
+  flashStatus('Saved session cleared. Start a new game or join a room.', 3500);
+
+  if (state.socket && state.socket.connected) {
+    state.socket.emit('joinLobby');
+    state.socket.emit('listRooms');
+  }
+}
+
+function showResumeRecovery(reason = 'Unable to restore your previous session.') {
+  if (state.resumeRecoveryShown) return;
+  state.resumeRecoveryShown = true;
+  state.resumePending = false;
+  showPanel('landing');
+  flashStatus(`${reason} You can retry or clear saved session.`, 5000);
+
+  let cleared = false;
+  const clearOnce = () => {
+    if (cleared) return;
+    cleared = true;
+    clearSavedSessionAndRecover();
+  };
+
+  const existing = document.getElementById('resume-recovery-actions');
+  if (existing) existing.remove();
+
+  const actionWrap = document.createElement('div');
+  actionWrap.id = 'resume-recovery-actions';
+  actionWrap.style.display = 'flex';
+  actionWrap.style.gap = '8px';
+  actionWrap.style.marginTop = '12px';
+
+  const retryBtn = document.createElement('button');
+  retryBtn.type = 'button';
+  retryBtn.textContent = 'Retry Resume';
+  retryBtn.addEventListener('click', () => {
+    if (state.myToken && state.socket && state.socket.connected) {
+      actionWrap.remove();
+      state.resumeRecoveryShown = false;
+      console.log('[boot] resumeSession emitted (manual retry)');
+      state.socket.emit('resumeSession', { token: state.myToken });
+      startResumeGuard();
+    } else {
+      flashStatus('Socket is not connected yet. Keep this screen open and retry.', 3500);
+    }
+  });
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.textContent = 'Clear Saved Session';
+  clearBtn.addEventListener('click', clearOnce);
+
+  actionWrap.appendChild(retryBtn);
+  actionWrap.appendChild(clearBtn);
+  elements.landingPanel?.appendChild(actionWrap);
+}
+
 // --- Wire cross-module renderers ----------------------------------
 
 // ui.js needs board renderers but can't import board.js (circular)
@@ -98,6 +193,21 @@ function connectSocket() {
 // --- Initialization -----------------------------------------------
 
 (function init() {
+  console.log('[boot] init start');
+  state.showResumeRecovery = showResumeRecovery;
+  state.clearSavedSessionAndRecover = clearSavedSessionAndRecover;
+  state.startResumeGuard = startResumeGuard;
+  state.clearResumeGuard = clearResumeGuard;
+
+  const savedToken = loadFromStorage(STORAGE_KEYS.token);
+  if (savedToken) {
+    console.log('[boot] saved token detected');
+    state.myToken = savedToken;
+    elements.landingPanel?.classList.add('hidden');
+  } else {
+    showPanel('landing');
+  }
+
   // Restore saved name or use default
   const savedName = loadFromStorage(STORAGE_KEYS.name);
   if (elements.nameInput) {
@@ -123,7 +233,7 @@ function connectSocket() {
     }
   }
 
-  // Connect socket
+  // Connect socket after startup recovery handlers and saved token are in state.
   connectSocket();
 
   // Check for ?watch= query param
@@ -147,12 +257,4 @@ function connectSocket() {
   fetchScoreboard();
   fetchMotd();
 
-  // Try resume session
-  const savedToken = loadFromStorage(STORAGE_KEYS.token);
-  if (savedToken) {
-    state.myToken = savedToken;
-    elements.landingPanel?.classList.add('hidden');
-  } else {
-    showPanel('landing');
-  }
 })();

@@ -51,7 +51,9 @@ export function onConnect() {
   // If already in an active game (Socket.IO auto-reconnected), don't re-emit resume
   if (state.isGameActive) return;
   if (state.myToken) {
+    console.log('[boot] resumeSession emitted');
     state.socket.emit('resumeSession', { token: state.myToken });
+    if (state.startResumeGuard) state.startResumeGuard();
   } else {
     // Fresh user or returned to landing — join lobby and fetch rooms immediately
     state.socket.emit('joinLobby');
@@ -67,8 +69,13 @@ export function onDisconnect() {
   }
 }
 
-export function onConnectError() {
-  flashStatus('Connection error. Retrying...', 4000);
+export function onConnectError(err) {
+  console.log('[boot] socket connect_error', err?.message || 'unknown');
+  if (state.clearResumeGuard) state.clearResumeGuard();
+  if (state.myToken && state.showResumeRecovery) {
+    state.showResumeRecovery('Connection issue.');
+  }
+  flashStatus('Connection issue. You can retry or clear saved session.', 4500);
 }
 
 export function onRateLimited(payload) {
@@ -270,7 +277,12 @@ export function onOpponentReconnected() {
 }
 
 export function onResumeSuccess(payload) {
+  console.log('[boot] resumeSuccess');
   console.log('[socket] resumeSuccess', payload.roomCode);
+  if (state.clearResumeGuard) state.clearResumeGuard();
+  state.resumeRecoveryShown = false;
+  const recovery = document.getElementById('resume-recovery-actions');
+  if (recovery) recovery.remove();
 
   state.myColor = payload.color;
   state.myToken = payload.token;
@@ -367,11 +379,17 @@ export function onResumeSuccess(payload) {
 }
 
 export function onResumeRejected(payload) {
+  console.log('[boot] resumeRejected');
   console.log('[socket] resumeRejected');
+  if (state.clearResumeGuard) state.clearResumeGuard();
   // Don't destroy an active game if this was a spurious resume attempt
   if (state.isGameActive) return;
-  clearSession();
-  showLanding();
+  if (state.showResumeRecovery) {
+    state.showResumeRecovery('Saved session is no longer valid.');
+  } else {
+    clearSession();
+    showLanding();
+  }
   // Immediately join lobby and fetch rooms since we're back on landing
   if (state.socket && state.socket.connected) {
     state.socket.emit('joinLobby');
