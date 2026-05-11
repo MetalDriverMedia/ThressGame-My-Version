@@ -86,6 +86,7 @@ class GameRoom {
   }
 
   endGame(reason, winner) {
+    if (this.status === 'ended') return false;
     this.status = 'ended';
     this.endedAt = Date.now();
     this.endReason = reason;
@@ -95,6 +96,7 @@ class GameRoom {
       clearTimeout(timer);
     }
     this.disconnectTimers.clear();
+    return true;
   }
 
   getSummary() {

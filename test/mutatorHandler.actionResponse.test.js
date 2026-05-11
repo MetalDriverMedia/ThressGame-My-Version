@@ -44,6 +44,23 @@ test.afterEach(() => {
 });
 
 
+
+
+test('mutatorActionResponse after game end does not mutate pendingAction', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MRESP-END' });
+  room.mutatorState.pendingAction = {
+    ruleId: 'mind_control',
+    actionType: 'enemy_piece',
+    forPlayer: 'w',
+    rule: { id: 'mind_control', name: 'Mind Control', description: 'desc', duration: 3 },
+  };
+  room.status = 'ended';
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'e7' });
+
+  assert.ok(room.mutatorState.pendingAction);
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+});
 test('mutatorActionResponse ignores invalid payloads', () => {
   const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-A' });
   room.mutatorState.pendingAction = { ruleId: 'x', actionType: 'square', forPlayer: 'w', rule: { id: 'x', name: 'X', duration: 1 } };

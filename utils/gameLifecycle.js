@@ -65,6 +65,9 @@ function scheduleRoomDeletion(gameManager, roomCode, delayMs = ROOM_CLEANUP_DELA
  * @param {string|null} winner - Winner color ('w'/'b') or null for draws
  */
 function emitGameEnded(io, room, reason, winner) {
+  if (!room || room._gameEndedEmitted) return false;
+  room._gameEndedEmitted = true;
+
   // Stop turn clock and clear any standing quiet-resign offer
   turnClock.clearClock(room);
   turnClock.clearQuietResign(room);
@@ -82,7 +85,7 @@ function emitGameEnded(io, room, reason, winner) {
   io.to(room.roomCode).emit('gameEnded', payload);
 
   // Update scoreboard (skip bot games, quiet resigns, and custom-ruleset games)
-  if (reason === 'quiet-resign') return;
+  if (reason === 'quiet-resign') return true;
   const w = room.white;
   const b = room.black;
   if (!w || !b || w.isBot || b.isBot) return;
@@ -104,6 +107,7 @@ function emitGameEnded(io, room, reason, winner) {
 
   // Push updated scoreboard to everyone in the lobby
   io.to('lobby').emit('scoreboardUpdate', { players: getTop(25) });
+  return true;
 }
 
 // Auto-resign a player whose turn timer ran out. Counts as a normal resignation
