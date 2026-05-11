@@ -317,8 +317,8 @@ function checkParryDeadlock(room, io, gameManager) {
     const inCheck = isKingInCheck(board, currentTurn, room.mutatorState);
     const winner = inCheck ? (currentTurn === 'w' ? 'b' : 'w') : null;
     const reason = inCheck ? 'checkmate' : 'stalemate';
-    debugLog('kingDestroyed', { roomCode: room.roomCode, reason, winner, status: room.status, moveCount: room.mutatorState?.moveCount });
-  room.endGame(reason, winner);
+    debugLog('parryDeadlock', { roomCode: room.roomCode, reason, winner, status: room.status, moveCount: room.mutatorState?.moveCount });
+    room.endGame(reason, winner);
     emitGameEnded(io, room, reason, winner);
     scheduleRoomDeletion(gameManager, room.roomCode);
     console.log(`[gameLifecycle] Parry deadlock: ${currentTurn} has no legal moves → ${reason}`);

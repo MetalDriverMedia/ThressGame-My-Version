@@ -913,7 +913,7 @@ function createMutatorHandlers({ handleMove, scheduleBotMove, generateBotTarget 
       ms.coinFlipResult = { result: choice, moveCount: ms.pendingCoinFlip.moveCount };
       ms.pendingCoinFlip = null;
 
-      debugLog('riskItRookFlipResult', { roomCode: room.roomCode, result: choice, forPlayer: player.color });
+      debugLog('coinFlipManualResult', { roomCode: room.roomCode, result: choice, forPlayer: player.color });
       io.to(room.roomCode).emit('coinFlipResult', { result: choice, forPlayer: player.color, manual: true });
 
       // If tails and king has no moves, skip turn

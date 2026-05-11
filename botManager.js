@@ -286,6 +286,13 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
     }
 
     room._botStaleAttempt = null;
+    if (moveResult?.status === 'applied' || moveResult?.applied) {
+      debugLog('botMoveApplied', { roomCode: room.roomCode, player: currentTurn, from: selectedMove.from, to: selectedMove.to, status: moveResult.status || 'applied' });
+    } else if (moveResult?.status === 'deferred' || moveResult?.pending) {
+      debugLog('botMoveFailed', { roomCode: room.roomCode, player: currentTurn, from: selectedMove.from, to: selectedMove.to, status: moveResult.status, reason: moveResult.reason || 'deferred' });
+    } else if (moveResult?.status === 'ended') {
+      debugLog('botMoveFailed', { roomCode: room.roomCode, player: currentTurn, from: selectedMove.from, to: selectedMove.to, status: moveResult.status, reason: moveResult.reason || 'gameEnded' });
+    }
     console.log(`[botManager] Bot ${bot.name} moved: ${selectedMove.from}->${selectedMove.to}`);
 
     // Handle any mutator auto-responses (RPS, target selection, etc.)
