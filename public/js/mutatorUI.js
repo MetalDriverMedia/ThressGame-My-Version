@@ -317,7 +317,14 @@ export async function showChoiceCards(options, isChooser) {
     const waitingP = document.createElement('p');
     waitingP.className = 'mutator-waiting';
     waitingP.id = 'mutator-panel-waiting';
-    waitingP.textContent = 'Waiting for opponent to choose...';
+    const chooserName = state.mutatorState?.pendingChoice?.chooser === 'w'
+      ? state.whitePlayer?.name || 'White'
+      : state.mutatorState?.pendingChoice?.chooser === 'b'
+        ? state.blackPlayer?.name || 'Black'
+        : 'a player';
+    waitingP.textContent = state.isSpectator
+      ? `Watching ${chooserName} choose a mutator...`
+      : 'Waiting for opponent to choose...';
     waitingP.style.opacity = '0';
     elements.mutatorPanel.appendChild(waitingP);
     // Fade in after cards settle (700ms per card + 400ms stagger)
