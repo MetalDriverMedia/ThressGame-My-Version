@@ -472,6 +472,40 @@ export function restorePersistentCards() {
 /**
  * Build an active mutator card for the bottom row.
  */
+function summarizeChoiceData(choiceData) {
+  if (choiceData == null) return '';
+  if (typeof choiceData === 'string' || typeof choiceData === 'number' || typeof choiceData === 'boolean') {
+    return String(choiceData);
+  }
+  if (Array.isArray(choiceData)) {
+    const values = choiceData.slice(0, 3).map(v => summarizeChoiceData(v)).filter(Boolean);
+    const suffix = choiceData.length > 3 ? ', ...' : '';
+    return values.join(', ') + suffix;
+  }
+  if (typeof choiceData === 'object') {
+    if (choiceData.square) return String(choiceData.square);
+    if (choiceData.column) return String(choiceData.column);
+    if (choiceData.row) return String(choiceData.row);
+    if (choiceData.target) return String(choiceData.target);
+    const compact = Object.entries(choiceData)
+      .filter(([k]) => !['expiresAtMove', 'activatedAtMove'].includes(k))
+      .slice(0, 3)
+      .map(([k, v]) => `${k}:${summarizeChoiceData(v)}`)
+      .join(', ');
+    return compact;
+  }
+  return '';
+}
+
+function buildActiveTooltip(ar, chooserLabel, targetSummary, durationText) {
+  const lines = [];
+  if (ar.description) lines.push(ar.description);
+  if (chooserLabel) lines.push(`Chosen by: ${chooserLabel}`);
+  if (targetSummary) lines.push(`Target: ${targetSummary}`);
+  if (durationText) lines.push(`Status: ${durationText}`);
+  return lines.join(' | ');
+}
+
 function buildActiveCard(ar) {
   const card = document.createElement('div');
   card.className = 'active-mutator-card';
@@ -482,20 +516,33 @@ function buildActiveCard(ar) {
   desc.textContent = ar.name;
   card.appendChild(desc);
 
+  const chooserLabel = ar.chooser === 'w' ? 'White' : ar.chooser === 'b' ? 'Black' : '';
+  const targetSummary = summarizeChoiceData(ar.choiceData);
+  if (chooserLabel || targetSummary) {
+    const meta = document.createElement('p');
+    meta.className = 'rule-meta';
+    const parts = [];
+    if (chooserLabel) parts.push(`By ${chooserLabel}`);
+    if (targetSummary) parts.push(`Target ${targetSummary}`);
+    meta.textContent = parts.join(' • ');
+    card.appendChild(meta);
+  }
+
   const duration = document.createElement('p');
   duration.className = 'rule-duration';
+  let durationText = 'Active';
   if (ar.expiresAtMove != null && state.mutatorState) {
     const left = ar.expiresAtMove - state.mutatorState.moveCount;
-    duration.textContent = `${left} move${left !== 1 ? 's' : ''} left`;
+    durationText = `${left} move${left !== 1 ? 's' : ''} left`;
   } else if (ar.persistent) {
-    duration.textContent = 'Persistent';
-  } else {
-    duration.textContent = 'Active';
+    durationText = 'Persistent';
   }
+  duration.textContent = durationText;
   card.appendChild(duration);
 
-  if (ar.description) {
-    card.setAttribute('data-tooltip', ar.description);
+  const tooltip = buildActiveTooltip(ar, chooserLabel, targetSummary, durationText);
+  if (tooltip) {
+    card.setAttribute('data-tooltip', tooltip);
   }
 
   return card;
