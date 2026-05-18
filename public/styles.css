@@ -2534,6 +2534,14 @@ button:not(:disabled):active {
   margin: 0.25rem 0;
 }
 
+.spectator-mode .square {
+  cursor: default;
+}
+
+.spectator-mode .mutator-card[data-status="choice"] {
+  cursor: default;
+}
+
 .disable-spectating-btn {
   font-size: 0.75rem;
 }

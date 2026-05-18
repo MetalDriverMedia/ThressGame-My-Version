@@ -182,6 +182,9 @@ function renderWaitingRoomMeta() {
 
 export function showGame() {
   showPanel('game');
+  if (elements.gamePanel) {
+    elements.gamePanel.classList.toggle('spectator-mode', state.isSpectator);
+  }
   if (elements.sidebarRoomCode) {
     elements.sidebarRoomCode.dataset.code = state.roomCode || '';
     elements.sidebarRoomCode.textContent = '****';
