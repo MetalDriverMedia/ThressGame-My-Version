@@ -39,6 +39,11 @@ function clearResumeGuard() {
   state.resumePending = false;
 }
 
+function removeRecoveryActions() {
+  const existing = document.getElementById('resume-recovery-actions');
+  if (existing) existing.remove();
+}
+
 function startResumeGuard() {
   clearResumeGuard();
   state.resumePending = true;
@@ -67,6 +72,7 @@ function clearSavedSessionAndRecover() {
   state.resumeRecoveryShown = false;
 
   showPanel('landing');
+  removeRecoveryActions();
   flashStatus('Saved session cleared. Start a new game or join a room.', 3500);
 
   if (state.socket && state.socket.connected) {
@@ -89,8 +95,7 @@ function showResumeRecovery(reason = 'Unable to restore your previous session.')
     clearSavedSessionAndRecover();
   };
 
-  const existing = document.getElementById('resume-recovery-actions');
-  if (existing) existing.remove();
+  removeRecoveryActions();
 
   const actionWrap = document.createElement('div');
   actionWrap.id = 'resume-recovery-actions';
@@ -109,7 +114,10 @@ function showResumeRecovery(reason = 'Unable to restore your previous session.')
       state.socket.emit('resumeSession', { token: state.myToken });
       startResumeGuard();
     } else {
-      flashStatus('Socket is not connected yet. Keep this screen open and retry.', 3500);
+      if (state.socket && typeof state.socket.connect === 'function') {
+        state.socket.connect();
+      }
+      flashStatus('Socket is not connected yet. Reconnecting… then retry.', 3500);
     }
   });
 
