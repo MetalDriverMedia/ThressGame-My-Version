@@ -195,6 +195,30 @@ test('clearClock clears timer and nulls state, null room safe', () => {
   });
 });
 
+
+
+test('stale timeout callbacks are ignored after clock restart', () => {
+  withCapturedTimers(({ scheduled }) => {
+    const ctx = createActiveHumanRoom('STALE1');
+    const calls = [];
+    turnClock.setTimeoutResignHandler((_room, _io, stallingColor) => {
+      calls.push(stallingColor);
+    });
+
+    turnClock.startClock(ctx.room, ctx.io, 'w');
+    const firstTimer = scheduled[0];
+
+    turnClock.startClock(ctx.room, ctx.io, 'b');
+    const secondTimer = scheduled[1];
+
+    firstTimer.cb();
+    assert.deepEqual(calls, []);
+    assert.equal(ctx.room.status, 'active');
+
+    secondTimer.cb();
+    assert.deepEqual(calls, ['b']);
+  });
+});
 test('turn expiry clears clock and calls timeout-resign handler once; inactive expiry no-ops', () => {
   withCapturedTimers(({ scheduled }) => {
     const ctx = createActiveHumanRoom('X1');
