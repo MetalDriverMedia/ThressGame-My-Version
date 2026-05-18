@@ -148,7 +148,7 @@ export function updateMutatorSummary() {
   if (notice) {
     const isModified = state.disabledMutators.size > 0 || state.manualCoinFlip;
     notice.textContent = isModified
-      ? "Heads-up: this room won't count toward the leaderboard (custom rule pool)."
+      ? "Heads-up: games with custom settings won't count toward the leaderboard."
       : '';
     notice.classList.toggle('hidden', !isModified);
   }
