@@ -844,7 +844,7 @@ export function showRPSModal(payload) {
   const showdown = document.getElementById('rps-showdown');
   const outcomeEl = document.getElementById('rps-outcome');
 
-  if (context) context.textContent = payload.message || 'A capture is being contested!';
+  if (context) context.textContent = payload.message || 'Parry triggered: this capture is contested.';
   if (pickPhase) pickPhase.classList.remove('hidden');
   if (showdown) showdown.classList.add('hidden');
   if (outcomeEl) outcomeEl.classList.add('hidden');
@@ -919,7 +919,7 @@ export function showRPSResult(payload) {
   setTimeout(() => {
     if (outcomeEl) {
       if (payload.outcome === 'tie') {
-        outcomeEl.textContent = 'Tie! Capture proceeds.';
+        outcomeEl.textContent = 'Tie! Attacker wins ties, so the capture proceeds.';
       } else if (payload.captureProceeds) {
         outcomeEl.textContent = 'Attack succeeds!';
       } else {

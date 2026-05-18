@@ -33,6 +33,17 @@ import {
 // BACKGROUND HELPERS
 // ============================================================================
 
+
+function buildTargetPrompt(payload, { isSecondChoice = false } = {}) {
+  const serverPrompt = typeof payload?.prompt === 'string' ? payload.prompt.trim() : '';
+  if (serverPrompt) return serverPrompt;
+
+  const ruleName = payload?.ruleName || payload?.rule?.name || payload?.name || 'Mutator action';
+  return isSecondChoice
+    ? `${ruleName}: select your second target.`
+    : `${ruleName}: select a target.`;
+}
+
 function cyclePageBackground() {
   const effects = [1, 2, 3, 4];
   const others = effects.filter(e => e !== state.currentBgEffect);
@@ -330,13 +341,13 @@ export function onResumeSuccess(payload) {
       if (ms.pendingChoice) {
         showChoiceCards(ms.pendingChoice.options, ms.pendingChoice.chooser === state.myColor);
       } else if (ms.pendingAction && ms.pendingAction.forPlayer === state.myColor) {
-        const prompt = ms.pendingAction.prompt || 'Select a target';
+        const prompt = buildTargetPrompt(ms.pendingAction);
         const validSquares = ms.pendingAction.sophieOptions || null;
         showTargetSelection(prompt, ms.pendingAction.actionType, (targets) => {
           state.socket.emit('mutatorActionResponse', { ruleId: ms.pendingAction.ruleId, targets });
         }, validSquares);
       } else if (ms.pendingSecondAction && ms.pendingSecondAction.forPlayer === state.myColor) {
-        showTargetSelection('Select a target', ms.pendingSecondAction.actionType, (targets) => {
+        showTargetSelection(buildTargetPrompt(ms.pendingSecondAction, { isSecondChoice: true }), ms.pendingSecondAction.actionType, (targets) => {
           state.socket.emit('mutatorActionResponse', { ruleId: ms.pendingSecondAction.ruleId, targets });
         });
       } else if (ms.pendingRPS) {
@@ -432,7 +443,7 @@ export async function onMutatorChosen(payload) {
 
 export function onMutatorAction(payload) {
   const validSquares = payload.sophieOptions || null;
-  showTargetSelection(payload.prompt, payload.actionType, (targets) => {
+  showTargetSelection(buildTargetPrompt(payload), payload.actionType, (targets) => {
     state.socket.emit('mutatorActionResponse', { ruleId: payload.ruleId, targets });
   }, validSquares);
 }
