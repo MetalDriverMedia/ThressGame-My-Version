@@ -35,6 +35,9 @@ function handleDisconnect(io, socket, gameManager, broadcastRoomUpdate) {
   if (room.status === 'waiting') {
     // In waiting room: schedule room destruction after 30s
     const timer = setTimeout(() => {
+      const currentRoom = gameManager.getRoom(room.roomCode);
+      if (currentRoom !== room) return;
+      room.disconnectTimers.delete(playerColor);
       // Check if player is still disconnected
       const currentPlayer = room.getPlayer(playerColor);
       if (currentPlayer && !currentPlayer.active) {
@@ -64,6 +67,9 @@ function handleDisconnect(io, socket, gameManager, broadcastRoomUpdate) {
 
     // Start reconnect timer
     const timer = setTimeout(() => {
+      const currentRoom = gameManager.getRoom(room.roomCode);
+      if (currentRoom !== room) return;
+      room.disconnectTimers.delete(playerColor);
       // Check if player is still disconnected
       const currentPlayer = room.getPlayer(playerColor);
       if (!currentPlayer || currentPlayer.active) return;
