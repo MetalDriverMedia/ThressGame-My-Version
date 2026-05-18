@@ -2606,6 +2606,15 @@ button:not(:disabled):active {
   margin: 0;
 }
 
+
+.active-mutator-card .rule-meta {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: center;
+  margin: 2px 0 0;
+}
+
 .active-mutator-card .rule-duration {
   color: var(--accent);
   font-size: 0.8rem;
