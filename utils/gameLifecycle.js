@@ -272,7 +272,9 @@ function getEffectiveLegalMoves(room) {
  */
 function checkMutatorDeadlock(room, io, gameManager) {
   if (!room || room.status !== 'active') return false;
+  if (gameManager?.getRoom && gameManager.getRoom(room.roomCode) !== room) return false;
   if (!room.mutatorState || room.mutatorState.activeRules.length === 0) return false;
+  if (hasGlobalPendingBlocker(room)) return false;
 
   const legalMoves = getEffectiveLegalMoves(room);
 
@@ -307,6 +309,8 @@ function checkMutatorDeadlock(room, io, gameManager) {
  */
 function checkParryDeadlock(room, io, gameManager) {
   if (!room || room.status !== 'active') return false;
+  if (gameManager?.getRoom && gameManager.getRoom(room.roomCode) !== room) return false;
+  if (hasGlobalPendingBlocker(room)) return false;
 
   const legalMoves = getEffectiveLegalMoves(room);
 

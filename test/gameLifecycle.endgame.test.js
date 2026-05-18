@@ -241,6 +241,52 @@ test('checkMutatorDeadlock and checkParryDeadlock coverage', () => {
 
 
 
+
+test('deadlock checks are suppressed while global pending interactions are unresolved', () => {
+  withCapturedTimers(() => {
+    const mutator = createActiveRoom({ roomCode: 'ENDPEND1', mutatorsEnabled: true, fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+    mutator.room.mutatorState.activeRules = [{ rule: { id: 'hobbit_battle' } }];
+    mutator.room.mutatorState.pendingAction = { ruleId: 'drafted', actionType: 'square', forPlayer: 'w' };
+
+    assert.equal(checkMutatorDeadlock(mutator.room, mutator.io, mutator.gameManager), false);
+    assert.equal(mutator.room.status, 'active');
+    assert.equal(mutator.roomEvents.some((e) => e.name === 'gameEnded'), false);
+
+    const parry = createActiveRoom({ roomCode: 'ENDPEND2', mutatorsEnabled: true, fen: '8/8/8/8/8/k7/1p6/KQ6 w - - 0 1' });
+    parry.room.mutatorState.pendingRPS = {
+      move: { from: 'a1', to: 'b2', promotion: null },
+      attacker: 'w',
+      defender: 'b',
+      attackerChoice: null,
+      defenderChoice: null,
+    };
+
+    assert.equal(checkParryDeadlock(parry.room, parry.io, parry.gameManager), false);
+    assert.equal(parry.room.status, 'active');
+    assert.equal(parry.roomEvents.some((e) => e.name === 'gameEnded'), false);
+  });
+});
+
+test('deadlock checks are suppressed for stale room instances', () => {
+  withCapturedTimers(() => {
+    const staleMutator = createActiveRoom({ roomCode: 'ENDSTALE1', mutatorsEnabled: true, fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+    staleMutator.room.mutatorState.activeRules = [{ rule: { id: 'hobbit_battle' } }];
+    const replacement = new GameRoom('ENDSTALE1');
+    staleMutator.gameManager.rooms.set('ENDSTALE1', replacement);
+
+    assert.equal(checkMutatorDeadlock(staleMutator.room, staleMutator.io, staleMutator.gameManager), false);
+    assert.equal(staleMutator.room.status, 'active');
+    assert.equal(staleMutator.roomEvents.some((e) => e.name === 'gameEnded'), false);
+
+    const staleParry = createActiveRoom({ roomCode: 'ENDSTALE2', fen: '8/8/8/8/8/k7/1p6/KQ6 w - - 0 1' });
+    const replacementParry = new GameRoom('ENDSTALE2');
+    staleParry.gameManager.rooms.set('ENDSTALE2', replacementParry);
+
+    assert.equal(checkParryDeadlock(staleParry.room, staleParry.io, staleParry.gameManager), false);
+    assert.equal(staleParry.room.status, 'active');
+    assert.equal(staleParry.roomEvents.some((e) => e.name === 'gameEnded'), false);
+  });
+});
 test('emitGameEnded and repeated terminal checks do not emit duplicate gameEnded', () => {
   const ctx = createActiveRoom({ roomCode: 'END-DEDUP', mutatorsEnabled: true, fen: '4k3/8/8/8/8/8/8/8 w - - 0 1' });
   ctx.room.mutatorState.activeRules = [{ rule: { id: 'short_stop' } }];
