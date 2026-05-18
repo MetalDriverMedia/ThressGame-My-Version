@@ -1582,6 +1582,42 @@ button:not(:disabled):active {
     padding: 20px 16px;
   }
 
+  .landing-wrapper {
+    transform: none;
+    max-width: 100%;
+  }
+
+  .join-code-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .join-code-row input,
+  #join-code-submit,
+  #create-room-submit {
+    width: 100%;
+  }
+
+  .create-options-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .room-code-display {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .room-code-value {
+    min-height: 42px;
+  }
+
+  .room-code-toggle {
+    min-height: 40px;
+    min-width: 70px;
+  }
+
   .board {
     border-width: 6px;
   }
@@ -1600,6 +1636,29 @@ button:not(:disabled):active {
 
   .game-over-buttons button {
     min-width: 100%;
+  }
+
+  .modal {
+    align-items: flex-start;
+    padding-top: 20px;
+    overflow-y: auto;
+  }
+
+  .modal-content {
+    width: min(96vw, 520px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    margin-bottom: 24px;
+  }
+
+  .mutator-choice-panel {
+    max-height: 38vh;
+  }
+
+  .active-mutator-card {
+    width: 100%;
+    max-width: none;
+    padding: 8px 12px;
   }
 
   .promotion-choices {
@@ -2670,21 +2729,70 @@ body.variant-b .variant-b-only { display: flex; }
   .game-section {
     flex-direction: column;
     align-items: center;
+    gap: 12px;
   }
   .game-section .board-area {
     flex: 0 0 auto;
-    width: 90vw;
+    width: min(96vw, 720px);
     max-width: 720px;
   }
   .board-container {
     width: 100%;
   }
   .choice-column {
-    width: 90vw;
+    width: min(96vw, 720px);
     max-width: 720px;
+    min-width: 0;
+    height: auto;
+    gap: 10px;
   }
   .mutator-choice-panel {
     min-height: 200px;
+    max-height: min(36vh, 300px);
+  }
+  .info-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .info-bar-left, .info-bar-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .active-mutators-row {
+    width: min(96vw, 800px);
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 820px) {
+  main {
+    zoom: 1;
+  }
+
+  body {
+    padding: 12px;
+    padding-bottom: 56px;
+  }
+
+  .panel.game-panel {
+    padding: 16px 12px;
+  }
+
+  .target-selection-bar {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+
+  .rps-choices {
+    gap: 8px;
+  }
+
+  .rps-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 12px 10px;
+    font-size: 0.95rem;
   }
 }
 
