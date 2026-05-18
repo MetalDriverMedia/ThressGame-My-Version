@@ -25,7 +25,7 @@ Guardrails for this PR:
 
 - `docs/GAME_COMPLETION_ROADMAP.md`
 - `docs/HUMAN_VS_HUMAN_FLOW_AUDIT.md`
-- `docs/HUMAN_VS_BOT_FLOW_AUDIT.md` — requested, but this file is not present in the repository at the time of this audit.
+- `docs/HUMAN_VS_BOT_FLOW_AUDIT.md`
 - `docs/ROOM_CREATION_AUDIT.md`
 - `docs/JOIN_FLOW_AUDIT.md`
 - `docs/MOBILE_RESPONSIVE_UX_AUDIT.md`
