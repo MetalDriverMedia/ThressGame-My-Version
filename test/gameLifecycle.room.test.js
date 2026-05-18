@@ -9,6 +9,7 @@ const {
   scheduleRoomDeletion,
   autoResignOnTimeout,
 } = require('../utils/gameLifecycle');
+const { handleDisconnect, handleResume } = require('../handlers/playerHandlers');
 
 function createSocket(id = 'sock-1') {
   return {
@@ -503,3 +504,110 @@ test('GameManager.deleteRoom refuses active deletion by default and allows waiti
 });
 
 test.skip('room reset/rematch lifecycle coverage deferred: no reset/rematch handler currently exists', () => {});
+
+test('handleDisconnect waiting-room timer ignores replacement room instance with same room code', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const broadcast = createBroadcastSpy();
+  const room = manager.createRoom(false);
+  const player = createPlayer('wait-s1', 'Waiter', 'wait-h1', 'w', false);
+  room.addPlayer(player);
+  manager.setSocketRoom(player.socketId, room.roomCode);
+  manager.setTokenRoom(player.token, room.roomCode);
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    handleDisconnect(io, { id: player.socketId }, manager, broadcast);
+    assert.equal(timers.length, 1);
+    assert.equal(room.disconnectTimers.size, 1);
+
+    const replacement = new GameRoom(room.roomCode);
+    replacement.status = 'waiting';
+    manager.rooms.set(room.roomCode, replacement);
+
+    timers[0].cb();
+    assert.equal(manager.getRoom(room.roomCode), replacement);
+    assert.equal(room.disconnectTimers.size, 1);
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('handleDisconnect active timer does not end replacement room and is cleared on fire', () => {
+  const manager = new GameManager();
+  const { io, roomEvents } = createIoRecorder();
+  const broadcast = createBroadcastSpy();
+  const room = manager.createRoom(false);
+  room.addPlayer(createPlayer('act-s1', 'A', 'act-h1', 'w', false));
+  room.addPlayer(createPlayer('act-s2', 'B', 'act-h2', 'b', false));
+  room.startGame();
+  manager.setSocketRoom('act-s1', room.roomCode);
+  manager.setSocketRoom('act-s2', room.roomCode);
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb) => {
+      const t = { unref() {} };
+      timers.push({ cb, t });
+      return t;
+    };
+    handleDisconnect(io, { id: 'act-s1' }, manager, broadcast);
+    assert.equal(room.disconnectTimers.has('w'), true);
+
+    const replacement = new GameRoom(room.roomCode);
+    replacement.status = 'active';
+    manager.rooms.set(room.roomCode, replacement);
+    timers[0].cb();
+    assert.equal(room.status, 'active');
+    assert.equal(roomEvents.some(e => e.name === 'gameEnded'), false);
+
+    manager.rooms.set(room.roomCode, room);
+    timers[0].cb();
+    assert.equal(room.disconnectTimers.has('w'), false);
+    assert.equal(room.status, 'ended');
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('handleResume clears disconnect timer and keeps session mapped to current room instance', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const player = createPlayer('res-s1', 'Res', 'res-h1', 'w', false);
+  room.addPlayer(player);
+  room.addPlayer(createPlayer('res-s2', 'Opp', 'res-h2', 'b', false));
+  room.startGame();
+  manager.setSocketRoom('res-s1', room.roomCode);
+  manager.setSocketRoom('res-s2', room.roomCode);
+  manager.setTokenRoom(player.token, room.roomCode);
+
+  const oldTimer = { id: 123 };
+  room.disconnectTimers.set('w', oldTimer);
+  player.active = false;
+  player.socketId = null;
+
+  const originalClear = global.clearTimeout;
+  const cleared = [];
+  try {
+    global.clearTimeout = (t) => cleared.push(t);
+    const resumeSocket = createSocket('res-new');
+    handleResume(io, resumeSocket, manager, { token: player.token });
+    assert.equal(cleared.length, 1);
+    assert.equal(cleared[0], oldTimer);
+    assert.equal(room.disconnectTimers.has('w'), false);
+    assert.equal(player.active, true);
+    assert.equal(player.socketId, 'res-new');
+    assert.equal(manager.getRoomForSocket('res-new'), room);
+    assert.equal(resumeSocket.emitted.at(-1).name, 'resumeSuccess');
+  } finally {
+    global.clearTimeout = originalClear;
+  }
+});
