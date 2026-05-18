@@ -119,6 +119,10 @@ function addBotToRoom(room, color) {
  */
 function scheduleBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) {
   if (!room || room.status !== 'active') { debugLog('botScheduledMoveSkipped', { roomCode: room?.roomCode, reason: 'inactiveRoom' }); return; }
+  if (gameManager?.getRoom && gameManager.getRoom(room.roomCode) !== room) {
+    debugLog('botScheduledMoveSkipped', { roomCode: room?.roomCode, reason: 'staleRoomInstance' });
+    return;
+  }
 
   // Determine whose turn it is
   const currentTurn = room.chess.turn();
@@ -130,9 +134,15 @@ function scheduleBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) {
   // Random delay between 2000ms and 4000ms
   const delay = 2000 + Math.random() * 2000;
 
+  const scheduledRoom = room;
+  const scheduledCode = room.roomCode;
   const timer = setTimeout(() => {
-    room.disconnectTimers.delete('bot_move');
-    performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn);
+    scheduledRoom.disconnectTimers.delete('bot_move');
+    if (!gameManager?.getRoom || gameManager.getRoom(scheduledCode) !== scheduledRoom) {
+      debugLog('botScheduledMoveSkipped', { roomCode: scheduledCode, reason: 'staleOrDeletedRoom' });
+      return;
+    }
+    performBotMove(scheduledRoom, io, gameManager, handleMoveFn, afterMoveFn);
   }, delay);
 
   // Store the timeout so it can be cleared if the room ends
@@ -165,6 +175,7 @@ function getBotMovePool(room, playerColor) {
  */
 async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) {
   if (!room || room.status !== 'active') return;
+  if (gameManager?.getRoom && gameManager.getRoom(room.roomCode) !== room) return;
 
   const currentTurn = room.chess.turn();
   const bot = room.getPlayer(currentTurn);
@@ -300,8 +311,10 @@ async function performBotMove(room, io, gameManager, handleMoveFn, afterMoveFn) 
       setTimeout(() => afterMoveFn(room, io, gameManager), 200);
     }
 
-    // Schedule next bot move if it's still a bot's turn (after the move is processed)
-    scheduleBotMove(room, io, gameManager, handleMoveFn, afterMoveFn);
+    // Only schedule follow-up move after a successful applied move.
+    if (moveResult?.status === 'applied' || moveResult?.applied) {
+      scheduleBotMove(room, io, gameManager, handleMoveFn, afterMoveFn);
+    }
   } catch (err) {
     console.error(`[botManager] Bot move execution failed:`, err.message);
   }

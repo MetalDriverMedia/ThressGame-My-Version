@@ -189,3 +189,51 @@ test('performBotMove stale rejection guard prevents repeated same-attempt loop',
     Math.random = originalRandom;
   }
 });
+
+test('scheduled bot callback does not execute when room instance is replaced before timer fires', async () => {
+  const gameManager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = createActiveBotRoom({ roomCode: 'BOTEX9', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, room);
+
+  let scheduledCb;
+  const originalSetTimeout = global.setTimeout;
+  try {
+    global.setTimeout = (cb) => {
+      scheduledCb = cb;
+      return 1;
+    };
+    const { scheduleBotMove } = require('../botManager');
+    scheduleBotMove(room, io, gameManager, async () => ({ status: 'applied' }));
+  } finally {
+    global.setTimeout = originalSetTimeout;
+  }
+
+  const replacement = createActiveBotRoom({ roomCode: 'BOTEX9', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, replacement);
+
+  let calls = 0;
+  await scheduledCb?.();
+  await performBotMove(room, io, gameManager, async () => { calls++; return { status: 'applied' }; });
+  assert.equal(calls, 0);
+});
+
+test('performBotMove does not reschedule after deferred/rejected/ended/ignored statuses', async () => {
+  const statuses = ['deferred', 'rejected', 'ended', 'ignored'];
+  for (const status of statuses) {
+    const gameManager = new GameManager();
+    const { io } = createIoRecorder();
+    const room = createActiveBotRoom({ roomCode: `BOTEX-${status}`, fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+    registerRoom(gameManager, room);
+
+    let scheduled = 0;
+    const originalSetTimeout = global.setTimeout;
+    try {
+      global.setTimeout = () => { scheduled++; return 1; };
+      await performBotMove(room, io, gameManager, async () => ({ status }));
+    } finally {
+      global.setTimeout = originalSetTimeout;
+    }
+    assert.equal(scheduled, 0, `unexpected reschedule for status ${status}`);
+  }
+});
