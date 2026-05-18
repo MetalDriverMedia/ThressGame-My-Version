@@ -82,6 +82,7 @@ export const state = {
   myToken: null,
   myName: null,
   roomCode: null,
+  roomMetadata: null,
 
   isGameActive: false,
   isSpectator: false,
@@ -177,6 +178,7 @@ export const elements = {
   roomCodeText: document.getElementById('room-code-text'),
   roomCodeCopy: document.getElementById('room-code-copy'),
   roomCodeToggle: document.getElementById('room-code-toggle'),
+  waitingRoomMeta: document.getElementById('waiting-room-meta'),
   copyFeedback: document.getElementById('copy-feedback'),
   cancelWaitingBtn: document.getElementById('cancel-waiting-btn'),
 

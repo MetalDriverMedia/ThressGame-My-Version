@@ -47,6 +47,7 @@ export function resetGameState() {
   state.lastMove = null;
   state.myColor = null;
   state.roomCode = null;
+  state.roomMetadata = null;
   state.chessInstance = null;
   state.pendingPromotion = null;
   state.mutatorState = null;

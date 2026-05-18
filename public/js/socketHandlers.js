@@ -110,6 +110,10 @@ export function onJoinSuccess(payload) {
   state.myToken = payload.token;
   state.myName = payload.name;
   state.roomCode = payload.roomCode;
+  state.roomMetadata = {
+    disabledMutatorCount: typeof payload.disabledMutatorCount === 'number' ? payload.disabledMutatorCount : null,
+    manualCoinFlip: typeof payload.manualCoinFlip === 'boolean' ? payload.manualCoinFlip : null,
+  };
 
   saveToStorage(STORAGE_KEYS.token, state.myToken);
   saveToStorage(STORAGE_KEYS.name, state.myName);
@@ -299,6 +303,10 @@ export function onResumeSuccess(payload) {
   state.myToken = payload.token;
   state.myName = payload.name;
   state.roomCode = payload.roomCode;
+  state.roomMetadata = {
+    disabledMutatorCount: typeof payload.disabledMutatorCount === 'number' ? payload.disabledMutatorCount : null,
+    manualCoinFlip: typeof payload.manualCoinFlip === 'boolean' ? payload.manualCoinFlip : null,
+  };
 
   saveToStorage(STORAGE_KEYS.token, state.myToken);
   saveToStorage(STORAGE_KEYS.name, state.myName);

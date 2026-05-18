@@ -73,6 +73,10 @@
 
           <!-- Create Room options (shown inline when Create Room is clicked) -->
           <div id="create-options-section" class="create-options-section hidden">
+            <div class="create-options-intro">
+              <strong>Room setup</strong>
+              <span>Pick the color and rule options friends will join before the game starts.</span>
+            </div>
             <div class="create-options-row">
               <label class="field">
                 <span>Preferred Color</span>
@@ -91,6 +95,7 @@
               <button type="button" id="mutator-settings-toggle" class="mutator-settings-toggle">
                 Mutator Settings <span id="mutator-settings-summary">(All enabled)</span>
               </button>
+              <p class="mutator-settings-help">These settings apply to created rooms and Play vs Bot. Guests see the active rule pool before joining.</p>
               <div id="mutator-settings-panel" class="mutator-settings-panel hidden">
                 <div class="mutator-settings-controls">
                   <label class="toggle-label">
@@ -161,7 +166,8 @@
         <div class="waiting-dots">
           <span></span><span></span><span></span>
         </div>
-        <p class="waiting-subtext">Share the room code with a friend to start playing.</p>
+        <div id="waiting-room-meta" class="waiting-room-meta" aria-live="polite"></div>
+        <p class="waiting-subtext">Share the room code with a friend to start playing. The game starts automatically when another player joins.</p>
         <button id="cancel-waiting-btn" type="button" class="btn-danger">
           Cancel
         </button>
