@@ -91,30 +91,31 @@
                 <span>Private Room</span>
               </label>
             </div>
-            <div class="mutator-settings-wrapper">
-              <button type="button" id="mutator-settings-toggle" class="mutator-settings-toggle">
-                Mutator Settings <span id="mutator-settings-summary">(All enabled)</span>
-              </button>
-              <p class="mutator-settings-help">These settings apply to created rooms and Play vs Bot. Guests see the active rule pool before joining.</p>
-              <div id="mutator-settings-panel" class="mutator-settings-panel hidden">
-                <div class="mutator-settings-controls">
-                  <label class="toggle-label">
-                    <input type="checkbox" id="mutator-toggle-all" checked> Enable All
-                  </label>
-                  <label class="toggle-label">
-                    <input type="checkbox" id="manual-coin-flip"> Manual Coin Flip (honor system)
-                  </label>
-                </div>
-                <div id="mutator-categories" class="mutator-categories">
-                  <!-- Populated by JS from /api/rules -->
-                </div>
-              </div>
-            </div>
-            <p id="create-leaderboard-notice" class="create-leaderboard-notice hidden"></p>
             <button id="create-room-submit" type="button" class="btn-primary">
               Create
             </button>
           </div>
+
+          <div class="mutator-settings-wrapper">
+            <button type="button" id="mutator-settings-toggle" class="mutator-settings-toggle">
+              Game Settings <span id="mutator-settings-summary">(All enabled)</span>
+            </button>
+            <p class="mutator-settings-help">Applies to Create Room and Play vs Bot before either game starts. Guests see the active rule pool before joining.</p>
+            <div id="mutator-settings-panel" class="mutator-settings-panel hidden">
+              <div class="mutator-settings-controls">
+                <label class="toggle-label">
+                  <input type="checkbox" id="mutator-toggle-all" checked> Enable All
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="manual-coin-flip"> Manual Coin Flip (honor system)
+                </label>
+              </div>
+              <div id="mutator-categories" class="mutator-categories">
+                <!-- Populated by JS from /api/rules -->
+              </div>
+            </div>
+          </div>
+          <p id="create-leaderboard-notice" class="create-leaderboard-notice hidden"></p>
         </div>
 
         <!-- Open Rooms Table -->
