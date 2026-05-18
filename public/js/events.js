@@ -2,7 +2,7 @@
 // EVENTS -- DOM event binding & landing logic
 // ============================================================================
 
-import { state, elements, STORAGE_KEYS, getOrCreateBrowserId, apiPath } from './state.js';
+import { state, elements, STORAGE_KEYS, getOrCreateBrowserId, apiPath, normalizeRoomCode } from './state.js';
 import { clearSession, removeFromStorage } from './storage.js';
 import {
   showLanding, hideModal, flashStatus,
@@ -226,12 +226,13 @@ export function bindLandingEvents() {
 function submitJoinCode() {
   const name = getPlayerName();
   if (!name) return;
-  const code = elements.roomCodeInput?.value.trim();
+  const code = normalizeRoomCode(elements.roomCodeInput?.value || '');
   if (!code) {
     showJoinError('Please enter a room code.');
     return;
   }
   setButtonsLoading(true);
+  if (elements.roomCodeInput) elements.roomCodeInput.value = code;
   state.socket.emit('joinRoom', { name, roomCode: code, browserId: getOrCreateBrowserId() });
 }
 
@@ -239,8 +240,10 @@ export function getPlayerName() {
   const name = elements.nameInput?.value.trim();
   if (!name) {
     showJoinError('Please enter a name.');
+    elements.nameInput?.focus();
     return null;
   }
+  clearJoinError();
   return name;
 }
 

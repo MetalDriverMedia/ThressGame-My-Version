@@ -222,6 +222,10 @@ export const elements = {
 
 // --- Utilities ------------------------------------------------------
 
+export function normalizeRoomCode(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
 export function escapeHtml(text) {
   const div = document.createElement('div');
   div.appendChild(document.createTextNode(text));

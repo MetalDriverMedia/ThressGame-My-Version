@@ -5,7 +5,7 @@
 import {
   state, elements, boardSquares, pieceImageCache,
   STORAGE_KEYS, COLOR_NAMES, PIECE_NAMES, PIECE_ICONS,
-  assetBasePath, apiPath, escapeHtml, getOrCreateBrowserId,
+  assetBasePath, apiPath, escapeHtml, getOrCreateBrowserId, normalizeRoomCode,
 } from './state.js';
 import { saveToStorage, removeFromStorage, clearSession, resetGameState } from './storage.js';
 
@@ -259,7 +259,7 @@ export function renderRoomsList(waitingRooms, activeRooms = []) {
   if (!waitingTable) {
     waitingTable = document.createElement('table');
     waitingTable.className = 'rooms-table';
-    waitingTable.innerHTML = '<thead><tr><th>Room</th><th>Host</th><th>Open Color</th><th></th></tr></thead><tbody></tbody>';
+    waitingTable.innerHTML = '<thead><tr><th>Room</th><th>Host</th><th>Open Color</th><th>Settings</th><th></th></tr></thead><tbody></tbody>';
     // Insert before active section or at end
     const activeHeading = elements.roomsList.querySelector('.active-games-heading');
     if (activeHeading) {
@@ -304,11 +304,26 @@ export function renderRoomsList(waitingRooms, activeRooms = []) {
   }
 }
 
+function summarizeRoomSettings(disabled = [], manualFlip = false) {
+  const totalRules = state.allRules?.length || 0;
+  const disabledCount = Array.isArray(disabled) ? disabled.length : 0;
+  const enabledText = totalRules > 0
+    ? `${Math.max(0, totalRules - disabledCount)}/${totalRules} rules`
+    : disabledCount > 0
+      ? `${disabledCount} disabled`
+      : 'All rules';
+  return manualFlip ? `${enabledText}; manual flip` : `${enabledText}; auto flip`;
+}
+
 function _bindJoinBtn(btn) {
   btn.addEventListener('click', (e) => {
-    const code = e.target.dataset.code;
+    const code = normalizeRoomCode(e.target.dataset.code || '');
     const name = elements.nameInput?.value.trim();
-    if (!name) return;
+    if (!name) {
+      if (elements.joinError) elements.joinError.textContent = 'Please enter a name before joining.';
+      elements.nameInput?.focus();
+      return;
+    }
     let disabled = [];
     try { disabled = JSON.parse(e.target.dataset.disabled || '[]'); } catch {}
     const manualFlip = e.target.dataset.manualFlip === '1';
@@ -320,11 +335,14 @@ function _bindJoinBtn(btn) {
 // target room. Confirms by emitting joinRoom; cancel just closes the modal.
 function showJoinConfirm({ code, name, disabled, manualFlip }) {
   const modal = document.getElementById('join-confirm-modal');
+  const titleEl = document.getElementById('join-confirm-title');
   const rulesContainer = document.getElementById('join-confirm-rules');
   const flagsEl = document.getElementById('join-confirm-flags');
   const yesBtn = document.getElementById('join-confirm-yes');
   const noBtn = document.getElementById('join-confirm-no');
   if (!modal || !rulesContainer || !yesBtn || !noBtn) return;
+
+  if (titleEl) titleEl.textContent = `Join room ${code}?`;
 
   const allRules = state.allRules || [];
   const disabledSet = new Set(disabled);
@@ -383,7 +401,7 @@ function showJoinConfirm({ code, name, disabled, manualFlip }) {
     ];
     btns.forEach(b => { if (b) b.disabled = true; });
     if (elements.nameInput) elements.nameInput.disabled = true;
-    state.socket.emit('joinRoom', { name, roomCode: code, browserId: getOrCreateBrowserId() });
+    state.socket.emit('joinRoom', { name, roomCode: normalizeRoomCode(code), browserId: getOrCreateBrowserId() });
   });
 
   modal.classList.remove('hidden');
@@ -391,7 +409,7 @@ function showJoinConfirm({ code, name, disabled, manualFlip }) {
 
 function _bindWatchBtn(btn) {
   btn.addEventListener('click', (e) => {
-    const code = e.target.dataset.code;
+    const code = normalizeRoomCode(e.target.dataset.code || '');
     state.socket.emit('spectateRoom', { roomCode: code });
   });
 }
@@ -423,6 +441,7 @@ function _diffWaitingRows(tbody, rooms) {
       const cells = row.querySelectorAll('td');
       cells[1].textContent = room.creatorName || 'Unknown';
       cells[2].textContent = openColor;
+      cells[3].textContent = summarizeRoomSettings(room.disabledMutators || [], room.manualCoinFlip);
       const btn = row.querySelector('.room-join-btn');
       if (btn) {
         btn.dataset.disabled = disabledJson;
@@ -436,6 +455,7 @@ function _diffWaitingRows(tbody, rooms) {
         `<td class="room-code-cell">${escapeHtml(code)}</td>` +
         `<td>${escapeHtml(room.creatorName || 'Unknown')}</td>` +
         `<td>${openColor}</td>` +
+        `<td class="room-settings-cell">${escapeHtml(summarizeRoomSettings(room.disabledMutators || [], room.manualCoinFlip))}</td>` +
         `<td><button class="btn-primary btn-small room-join-btn" data-code="${escapeHtml(code)}" data-disabled='${escapeHtml(disabledJson)}' data-manual-flip="${manualFlip}">Join</button></td>`;
       _bindJoinBtn(row.querySelector('.room-join-btn'));
       tbody.appendChild(row);

@@ -423,6 +423,8 @@ select {
 
 .join-code-row input {
   flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* Create options section */
@@ -727,6 +729,11 @@ button:not(:disabled):active {
   font-family: 'Courier New', monospace;
   font-weight: 600;
   color: var(--accent);
+}
+
+.room-settings-cell {
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 /* ============================================================================
@@ -1659,6 +1666,19 @@ button:not(:disabled):active {
   #join-code-submit,
   #create-room-submit {
     width: 100%;
+  }
+
+  .rooms-table {
+    font-size: 0.82rem;
+  }
+
+  .rooms-table th,
+  .rooms-table td {
+    padding: 8px 6px;
+  }
+
+  .room-settings-cell {
+    font-size: 0.76rem;
   }
 
   .create-options-row {

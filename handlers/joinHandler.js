@@ -136,7 +136,7 @@ function handleJoinRoom(io, socket, gameManager, data, startGame, broadcastRoomU
     }
   }
 
-  const roomCode = data.roomCode;
+  const roomCode = typeof data.roomCode === 'string' ? data.roomCode.trim().toUpperCase() : data.roomCode;
   if (!roomCode || typeof roomCode !== 'string') {
     socket.emit('joinError', 'Invalid room code.');
     return;
