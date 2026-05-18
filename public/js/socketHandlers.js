@@ -479,7 +479,10 @@ export async function onMutatorActivated(payload) {
   const rule = payload.rule;
   if (rule) {
     const hasDuration = rule.duration || (payload.mutatorState?.activeRules?.find(ar => ar.id === rule.id)?.expiresAtMove != null);
-    if (hasDuration) {
+    if (payload.skipped) {
+      await removeChoiceCard(rule.id);
+      addToHistory(rule, 'skipped');
+    } else if (hasDuration) {
       addPersistentCard(rule);
       addToHistory(rule, 'persistent');
     } else {
@@ -493,7 +496,11 @@ export async function onMutatorActivated(payload) {
   // Restore any previously-active persistent cards that were cleared during selection
   syncPersistentCards();
 
-  flashStatus(`${rule?.name || 'Mutator'} activated!`, 3000);
+  if (payload.skipped) {
+    flashStatus(`${rule?.name || 'Mutator'} was skipped.`, 3000);
+  } else {
+    flashStatus(`${rule?.name || 'Mutator'} activated!`, 3000);
+  }
 }
 
 export async function onMutatorExpired(payload) {

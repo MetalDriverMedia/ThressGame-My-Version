@@ -574,6 +574,7 @@ function buildHistoryCard(entry) {
 
   const typeLabel = entry.type === 'instant' ? 'Instant'
     : entry.type === 'expired' ? 'Expired'
+    : entry.type === 'skipped' ? 'Skipped'
     : 'Used';
 
   card.innerHTML = `
