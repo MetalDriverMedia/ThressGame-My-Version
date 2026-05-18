@@ -46,12 +46,17 @@ function startClock(room, io, forColor) {
   // If the timer expires without a move, the staller is auto-resigned (full
   // scoreboard penalty). The slow-play "quiet resign" relief is a separate
   // mechanism triggered by 3 consecutive completed-but-slow moves.
-  room._turnExpireTimer = setTimeout(() => _onTurnExpired(room, io), TURN_DURATION_MS);
+  const expectedForColor = room.turnClockFor;
+  const timer = setTimeout(() => _onTurnExpired(room, io, timer, expectedForColor), TURN_DURATION_MS);
+  room._turnExpireTimer = timer;
 }
 
-function _onTurnExpired(room, io) {
-  if (room.status !== 'active') return;
-  const stallingColor = room.turnClockFor || room.chess.turn();
+function _onTurnExpired(room, io, expectedTimer, expectedForColor) {
+  if (!room || room.status !== 'active') return;
+  // Stale callback guard: only the currently-registered timer may resolve.
+  if (room._turnExpireTimer !== expectedTimer) return;
+
+  const stallingColor = room.turnClockFor || expectedForColor || room.chess.turn();
   clearClock(room);
   if (typeof _onTimeoutResign === 'function') {
     _onTimeoutResign(room, io, stallingColor);
