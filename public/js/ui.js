@@ -134,7 +134,50 @@ export function showWaiting(code) {
   if (elements.roomCodeToggle) {
     elements.roomCodeToggle.textContent = 'Show';
   }
+  renderWaitingRoomMeta();
   showPanel('waiting');
+}
+
+function renderWaitingRoomMeta() {
+  if (!elements.waitingRoomMeta) return;
+
+  const openColor = state.myColor === 'w' ? 'Black' : state.myColor === 'b' ? 'White' : 'opponent';
+  const disabledCount = state.roomMetadata?.disabledMutatorCount;
+  const manualFlip = state.roomMetadata?.manualCoinFlip;
+  const totalRules = state.allRules.length;
+
+  let ruleText = 'Rule pool: custom settings';
+  if (typeof disabledCount === 'number') {
+    if (disabledCount === 0) {
+      ruleText = totalRules > 0 ? `Rule pool: all ${totalRules} mutators enabled` : 'Rule pool: all mutators enabled';
+    } else if (totalRules > 0) {
+      ruleText = `Rule pool: ${Math.max(0, totalRules - disabledCount)}/${totalRules} mutators enabled`;
+    } else {
+      ruleText = `Rule pool: ${disabledCount} mutator${disabledCount === 1 ? '' : 's'} disabled`;
+    }
+  }
+
+  const coinText = manualFlip === true
+    ? 'Coin flips: manual honor-system choice'
+    : manualFlip === false
+      ? 'Coin flips: automatic'
+      : 'Coin flips: room default';
+
+  elements.waitingRoomMeta.innerHTML = `
+    <div class="waiting-meta-card">
+      <span class="waiting-meta-label">You are</span>
+      <strong>${escapeHtml(COLOR_NAMES[state.myColor] || 'Player')}</strong>
+    </div>
+    <div class="waiting-meta-card">
+      <span class="waiting-meta-label">Waiting for</span>
+      <strong>${escapeHtml(openColor)}</strong>
+    </div>
+    <div class="waiting-meta-card waiting-meta-wide">
+      <span class="waiting-meta-label">Settings</span>
+      <strong>${escapeHtml(ruleText)}</strong>
+      <span>${escapeHtml(coinText)}</span>
+    </div>
+  `;
 }
 
 export function showGame() {

@@ -309,21 +309,43 @@ export function bindWaitingEvents() {
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
+  const showCopyFeedback = () => {
     if (elements.copyFeedback) {
+      elements.copyFeedback.textContent = 'Copied!';
       elements.copyFeedback.classList.remove('hidden');
       setTimeout(() => {
         elements.copyFeedback.classList.add('hidden');
       }, 1500);
     }
-  }).catch(() => {
+  };
+
+  const fallbackCopy = () => {
     const textarea = document.createElement('textarea');
     textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
     document.body.appendChild(textarea);
     textarea.select();
-    try { document.execCommand('copy'); } catch { /* ignore */ }
+    let copied = false;
+    try { copied = document.execCommand('copy'); } catch { copied = false; }
     document.body.removeChild(textarea);
-  });
+    if (copied) {
+      showCopyFeedback();
+    } else if (elements.copyFeedback) {
+      elements.copyFeedback.textContent = 'Select and copy the code.';
+      elements.copyFeedback.classList.remove('hidden');
+      setTimeout(() => {
+        elements.copyFeedback.classList.add('hidden');
+      }, 2200);
+    }
+  };
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(showCopyFeedback).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
 }
 
 // ============================================================================

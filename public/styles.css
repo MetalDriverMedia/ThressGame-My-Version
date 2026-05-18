@@ -855,6 +855,45 @@ button:not(:disabled):active {
   font-style: italic;
 }
 
+.waiting-room-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+
+.waiting-meta-card {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(129, 182, 76, 0.14);
+  border-radius: 8px;
+}
+
+.waiting-meta-wide {
+  grid-column: 1 / -1;
+}
+
+.waiting-meta-label {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-family: var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.waiting-meta-card strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.waiting-meta-card span:last-child {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
 /* ============================================================================
    GAME PANEL
    ============================================================================ */
@@ -1403,6 +1442,30 @@ button:not(:disabled):active {
 
 .create-leaderboard-notice.hidden { display: none; }
 
+.create-options-intro {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  background: rgba(129, 182, 76, 0.08);
+  border: 1px solid rgba(129, 182, 76, 0.16);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.create-options-intro strong {
+  color: var(--text);
+  font-family: var(--font-heading);
+  letter-spacing: 0.03em;
+}
+
+.mutator-settings-help {
+  margin: 6px 2px 0;
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .join-confirm-buttons {
   display: flex;
   gap: 12px;
@@ -1616,6 +1679,10 @@ button:not(:disabled):active {
   .room-code-toggle {
     min-height: 40px;
     min-width: 70px;
+  }
+
+  .waiting-room-meta {
+    grid-template-columns: 1fr;
   }
 
   .board {
