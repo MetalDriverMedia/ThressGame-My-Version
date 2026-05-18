@@ -11,7 +11,7 @@ const turnClock = require('../utils/turnClock');
  * @param {Object} data - { roomCode }
  */
 function handleSpectateRoom(io, socket, gameManager, data) {
-  const roomCode = data && data.roomCode;
+  const roomCode = data && typeof data.roomCode === 'string' ? data.roomCode.trim().toUpperCase() : data && data.roomCode;
   if (!roomCode || typeof roomCode !== 'string') {
     socket.emit('spectateError', 'Invalid room code.');
     return;
