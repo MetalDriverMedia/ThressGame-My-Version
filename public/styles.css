@@ -1540,6 +1540,13 @@ button:not(:disabled):active {
    GAME OVER MODAL
    ============================================================================ */
 
+.game-over-subtext {
+  margin: -4px 0 4px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .game-over-buttons {
   display: flex;
   gap: 12px;
