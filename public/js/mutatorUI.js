@@ -603,22 +603,44 @@ export function renderBoardOverlays() {
   if (!state.mutatorState) return;
 
   for (const [, data] of computeDesiredOverlays()) {
-    addSquareOverlay(data.square, data.type, data.icon);
+    addSquareOverlay(data.square, data.type, data.icon, data.label || OVERLAY_LABELS[data.type] || 'Board marker');
   }
 }
 
-function addSquareOverlay(square, type, icon) {
+function addSquareOverlay(square, type, icon, label = '') {
   const squareEl = boardSquares.get(square);
   if (!squareEl) return;
   const overlay = document.createElement('div');
   overlay.className = `board-overlay board-overlay-${type}`;
   overlay.textContent = icon;
+  if (label) {
+    overlay.title = label;
+    overlay.setAttribute('aria-label', label);
+  }
   squareEl.appendChild(overlay);
 }
 
 // ============================================================================
 // OVERLAY ANIMATION SYSTEM
 // ============================================================================
+
+const OVERLAY_LABELS = {
+  mine: 'Minefield square',
+  blocked: 'Hard-blocked square',
+  pit: 'Bottomless Pit square',
+  portal: 'Portal square',
+  treasure: 'Treasure square',
+  death: 'Death square',
+  tornado: 'Tornado square',
+  frozen: 'Frozen column square',
+  invulnerable: 'Invulnerable piece',
+  bomb: 'Living Bomb marker',
+  mitosis: 'Mitosis target',
+  nomansland: 'No Man's Land square',
+  iceage: 'Ice Age frozen file square',
+  timebomb: 'Time Bomb lane square',
+  locked: 'Locked square',
+};
 
 const OVERLAY_ANIM_MAP = {
   mine: 'drop', bomb: 'drop', pit: 'drop', timebomb: 'drop',
@@ -652,6 +674,7 @@ function computeDesiredOverlays() {
 
   if (mods.mines) mods.mines.forEach(m => result.set(`mine:${m.square}`, { type: 'mine', icon: '\uD83D\uDCA3', square: m.square }));
   if (mods.blockedSquares) mods.blockedSquares.forEach(b => result.set(`blocked:${b.square}`, { type: 'blocked', icon: '\u2715', square: b.square }));
+  if (mods.lockedSquares) mods.lockedSquares.forEach(ls => result.set(`locked:${ls.square}`, { type: 'locked', icon: '\uD83D\uDD12', square: ls.square }));
   if (mods.bottomlessPits) mods.bottomlessPits.forEach(b => result.set(`pit:${b.square}`, { type: 'pit', icon: '\uD83D\uDC80', square: b.square }));
   if (mods.portals) mods.portals.filter(alive).forEach(p => {
     result.set(`portal:${p.square1}`, { type: 'portal', icon: '\uD83C\uDF00', square: p.square1 });
@@ -702,16 +725,24 @@ function computeDesiredOverlays() {
     }
   }
 
+  for (const [, entry] of result) {
+    if (!entry.label) entry.label = OVERLAY_LABELS[entry.type] || 'Board marker';
+  }
+
   return result;
 }
 
-function addSquareOverlayAnimated(square, type, icon, rowIndex) {
+function addSquareOverlayAnimated(square, type, icon, rowIndex, label = '') {
   const squareEl = boardSquares.get(square);
   if (!squareEl) return;
   const overlay = document.createElement('div');
   const animType = OVERLAY_ANIM_MAP[type] || 'fade';
   overlay.className = `board-overlay board-overlay-${type} board-overlay-entering-${animType}`;
   overlay.textContent = icon;
+  if (label) {
+    overlay.title = label;
+    overlay.setAttribute('aria-label', label);
+  }
   if ((animType === 'frost') && rowIndex !== undefined) {
     overlay.style.animationDelay = `${rowIndex * 50}ms`;
   }
@@ -744,7 +775,7 @@ export function renderBoardOverlaysAnimated() {
 
   for (const [key, data] of newDesired) {
     if (!oldSnapshot.has(key)) {
-      addSquareOverlayAnimated(data.square, data.type, data.icon, data.rowIndex);
+      addSquareOverlayAnimated(data.square, data.type, data.icon, data.rowIndex, data.label || OVERLAY_LABELS[data.type] || 'Board marker');
     }
   }
 }

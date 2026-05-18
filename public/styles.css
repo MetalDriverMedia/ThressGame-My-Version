@@ -1777,6 +1777,11 @@ button:not(:disabled):active {
   font-size: 1.8em;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 80, 0, 0.5), 1px 1px 0 #000;
 }
+.board-overlay-locked {
+  color: #9ad8ff;
+  font-size: 1.25em;
+  text-shadow: 0 0 5px rgba(80, 180, 255, 0.7), 0 0 2px rgba(0, 0, 0, 0.9);
+}
 .board-overlay-pit { color: #8b0000; }
 .board-overlay-portal { color: #7b68ee; }
 .board-overlay-treasure { color: #ffd700; }
