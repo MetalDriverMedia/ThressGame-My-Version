@@ -691,7 +691,7 @@ const OVERLAY_LABELS = {
   invulnerable: 'Invulnerable piece',
   bomb: 'Living Bomb marker',
   mitosis: 'Mitosis target',
-  nomansland: 'No Man's Land square',
+  nomansland: "No Man's Land square",
   iceage: 'Ice Age frozen file square',
   timebomb: 'Time Bomb lane square',
   locked: 'Locked square',
