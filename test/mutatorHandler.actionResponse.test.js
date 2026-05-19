@@ -92,6 +92,18 @@ test('mutatorActionResponse ignores when room has no mutatorState', () => {
   assert.equal(roomEvents.length, 0);
 });
 
+test('mutatorActionResponse ignores when no pending action exists', () => {
+  const { room, whiteSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-C2' });
+  room.mutatorState.pendingAction = null;
+  room.mutatorState.pendingSecondAction = null;
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'e4' });
+
+  assert.equal(roomEvents.length, 0);
+  assert.equal(room.mutatorState.pendingAction, null);
+  assert.equal(room.mutatorState.pendingSecondAction, null);
+});
+
 test('mutatorActionResponse ignores when pendingAction belongs to other player', () => {
   const { room, blackSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-D' });
   room.mutatorState.pendingAction = { ruleId: 'x', actionType: 'square', forPlayer: 'w', rule: { id: 'x', name: 'X', duration: 1 } };
@@ -258,7 +270,27 @@ test('secondPlayerChoice creates pendingSecondAction then human response activat
 
   blackSocket.trigger('mutatorActionResponse', { targets: 'c4' });
   assert.equal(room.mutatorState.pendingSecondAction, null);
+
   assert.ok(roomEvents.find((e) => e.name === 'mutatorActivated'));
+});
+
+test('secondPlayerChoice rejects unauthorized responder and keeps pending owner intact', () => {
+  const { room, whiteSocket, blackSocket, roomEvents } = setupMutatorActionRoom({ roomCode: 'MACT-J2' });
+  const rule = { id: 'mindish', name: 'Mindish', description: '', duration: 2, secondPlayerChoice: true, secondChoiceType: 'square' };
+  room.mutatorState.pendingAction = { ruleId: rule.id, actionType: 'square', forPlayer: 'w', rule };
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'c3' });
+  assert.equal(room.mutatorState.pendingAction, null);
+  assert.equal(room.mutatorState.pendingSecondAction.forPlayer, 'b');
+
+  whiteSocket.trigger('mutatorActionResponse', { targets: 'c4' });
+  assert.ok(room.mutatorState.pendingSecondAction);
+  assert.equal(room.mutatorState.pendingSecondAction.forPlayer, 'b');
+  assert.equal(roomEvents.some((e) => e.name === 'mutatorActivated'), false);
+
+  blackSocket.trigger('mutatorActionResponse', { targets: 'c4' });
+  assert.equal(room.mutatorState.pendingSecondAction, null);
+  assert.equal(roomEvents.filter((e) => e.name === 'mutatorActivated').length, 1);
 });
 
 test('two_friendly_pawns 3-step flow validates and activates deterministically', () => {
