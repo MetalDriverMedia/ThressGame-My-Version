@@ -24,7 +24,7 @@ const { setupApiRoutes } = require('./routes/apiRoutes');
 
 const rawPort = (process.env.PORT || '3000').trim();
 const normalizedPort = Number.parseInt(rawPort, 10);
-const PORT = Number.isInteger(normalizedPort) && normalizedPort > 0 ? normalizedPort : 3000;
+const PORT = Number.isInteger(normalizedPort) && normalizedPort >= 0 ? normalizedPort : 3000;
 const BASE_PATH = formatBasePath(process.env.BASE_PATH);
 const SOCKET_PATH = buildSocketPath(BASE_PATH);
 const APP_VERSION = require('./package.json').version;
@@ -269,10 +269,12 @@ setInterval(() => gameManager.cleanupOldRooms(), 5 * 60 * 1000);
 // Start HTTP server
 httpServer.listen(PORT, () => {
   const publicBase = BASE_PATH === '/' ? '' : BASE_PATH;
-  const appUrl = `http://localhost:${PORT}${publicBase || '/'}`;
+  const boundAddress = httpServer.address();
+  const boundPort = boundAddress && typeof boundAddress === 'object' ? boundAddress.port : PORT;
+  const appUrl = `http://localhost:${boundPort}${publicBase || '/'}`;
   console.log(`[startup] Thress ${APP_VERSION} listening`);
   console.log(`[startup] URL: ${appUrl}`);
-  console.log(`[startup] Port: ${PORT}${rawPort !== String(PORT) ? ` (normalized from ${JSON.stringify(rawPort)})` : ''}`);
+  console.log(`[startup] Port: ${boundPort}${rawPort !== String(PORT) ? ` (normalized from ${JSON.stringify(rawPort)})` : ''}`);
   console.log(`[startup] Base path: ${BASE_PATH}`);
   console.log(`[startup] Socket.IO path: ${SOCKET_PATH}`);
   console.log('[startup] Health endpoint: /api/health');
