@@ -237,3 +237,66 @@ test('performBotMove does not reschedule after deferred/rejected/ended/ignored s
     assert.equal(scheduled, 0, `unexpected reschedule for status ${status}`);
   }
 });
+
+
+test('scheduleBotMove repeated scheduling for same state yields at most one applied bot move', async () => {
+  const gameManager = new GameManager();
+  const { io, roomEvents } = createIoRecorder();
+  const room = createActiveBotRoom({ roomCode: 'BOTEX10', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, room);
+
+  const callbacks = [];
+  const originalSetTimeout = global.setTimeout;
+  try {
+    global.setTimeout = (cb) => { callbacks.push(cb); return { id: callbacks.length }; };
+    const { scheduleBotMove } = require('../botManager');
+    for (let i = 0; i < 3; i++) scheduleBotMove(room, io, gameManager, handleMove);
+  } finally {
+    global.setTimeout = originalSetTimeout;
+  }
+
+  assert.equal(callbacks.length, 3);
+  for (const cb of callbacks) await cb();
+
+  const moveApplied = roomEvents.filter((e) => e.name === 'moveApplied');
+  assert.equal(moveApplied.length, 1);
+  assert.equal(room.chess.turn(), 'b');
+});
+
+test('scheduled bot callback no-ops after room ends or bot turn ownership changes', async () => {
+  const gameManager = new GameManager();
+  const { io, roomEvents } = createIoRecorder();
+  const room = createActiveBotRoom({ roomCode: 'BOTEX11', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, room);
+
+  const originalSetTimeout = global.setTimeout;
+  let scheduledCb;
+  try {
+    global.setTimeout = (cb) => { scheduledCb = cb; return 1; };
+    const { scheduleBotMove } = require('../botManager');
+    scheduleBotMove(room, io, gameManager, handleMove);
+  } finally {
+    global.setTimeout = originalSetTimeout;
+  }
+
+  room.endGame('disconnect', 'b');
+  await scheduledCb?.();
+  assert.equal(roomEvents.some((e) => e.name === 'moveApplied'), false);
+
+  const room2 = createActiveBotRoom({ roomCode: 'BOTEX12', fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1' });
+  registerRoom(gameManager, room2);
+  let scheduledCb2;
+  const originalSetTimeout2 = global.setTimeout;
+  try {
+    global.setTimeout = (cb) => { scheduledCb2 = cb; return 2; };
+    const { scheduleBotMove } = require('../botManager');
+    scheduleBotMove(room2, io, gameManager, handleMove);
+  } finally {
+    global.setTimeout = originalSetTimeout2;
+  }
+
+  room2.white.isBot = false;
+  await scheduledCb2?.();
+  const room2Moves = roomEvents.filter((e) => e.roomCode === 'BOTEX12' && e.name === 'moveApplied');
+  assert.equal(room2Moves.length, 0);
+});

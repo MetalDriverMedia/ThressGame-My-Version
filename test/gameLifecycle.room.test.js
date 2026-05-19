@@ -668,3 +668,73 @@ test('handleResume preserves player side and pending owner state', () => {
   assert.equal(room.white.color, 'w');
   assert.equal(room.black.color, 'b');
 });
+
+
+test('handleResume reconnect churn preserves side/mappings and rejects stale ownership steals', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const white = createPlayer('churn-w-0', 'White', 'churn-h1', 'w', false);
+  const black = createPlayer('churn-b-0', 'Black', 'churn-h2', 'b', false);
+  room.addPlayer(white);
+  room.addPlayer(black);
+  room.startGame();
+  manager.setSocketRoom('churn-w-0', room.roomCode);
+  manager.setSocketRoom('churn-b-0', room.roomCode);
+  manager.setTokenRoom(white.token, room.roomCode);
+  manager.setTokenRoom(black.token, room.roomCode);
+
+  for (let i = 1; i <= 4; i++) {
+    handleDisconnect(io, { id: white.socketId }, manager, createBroadcastSpy());
+    const resumeSocket = createSocket(`churn-w-${i}`);
+    handleResume(io, resumeSocket, manager, { token: white.token });
+
+    assert.equal(resumeSocket.emitted.at(-1).name, 'resumeSuccess');
+    assert.equal(room.white.color, 'w');
+    assert.equal(room.black.color, 'b');
+    assert.equal(room.white.socketId, `churn-w-${i}`);
+    assert.equal(manager.getRoomForSocket(`churn-w-${i}`), room);
+    assert.equal(manager.getRoomForToken(white.token), room);
+
+    const staleSocket = createSocket(`stale-${i}`);
+    handleResume(io, staleSocket, manager, { token: 'invalid-token' });
+    assert.equal(staleSocket.emitted.at(-1).name, 'resumeRejected');
+    assert.equal(room.white.socketId, `churn-w-${i}`);
+  }
+
+  assert.equal(room.status, 'active');
+  assert.equal(room.white.name, 'White');
+  assert.equal(room.black.name, 'Black');
+});
+
+test('pending owner remains stable and unresolved through reconnect churn', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const white = createPlayer('pchurn-w-0', 'White', 'pchurn-h1', 'w', false);
+  const black = createPlayer('pchurn-b-0', 'Black', 'pchurn-h2', 'b', false);
+  room.addPlayer(white);
+  room.addPlayer(black);
+  room.startGame();
+  room.mutatorState.pendingAction = { ruleId: 'x', actionType: 'square', forPlayer: 'w', requiresResponse: true };
+
+  manager.setSocketRoom('pchurn-w-0', room.roomCode);
+  manager.setSocketRoom('pchurn-b-0', room.roomCode);
+  manager.setTokenRoom(white.token, room.roomCode);
+  manager.setTokenRoom(black.token, room.roomCode);
+
+  for (let i = 1; i <= 3; i++) {
+    handleDisconnect(io, { id: white.socketId }, manager, createBroadcastSpy());
+    const resumeSocket = createSocket(`pchurn-w-${i}`);
+    handleResume(io, resumeSocket, manager, { token: white.token });
+
+    assert.equal(resumeSocket.emitted.at(-1).name, 'resumeSuccess');
+    assert.equal(room.mutatorState.pendingAction.forPlayer, 'w');
+    assert.ok(room.mutatorState.pendingAction);
+
+    const unauthorized = createSocket(`pchurn-unauth-${i}`);
+    handleResume(io, unauthorized, manager, { token: 'stolen-token' });
+    assert.equal(unauthorized.emitted.at(-1).name, 'resumeRejected');
+    assert.equal(room.mutatorState.pendingAction.forPlayer, 'w');
+  }
+});
