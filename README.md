@@ -46,29 +46,20 @@ npm run dev      # development (auto-reload)
 ```
 
 
-### Deployment & Validation (Alpha)
+### Deployment (Alpha)
+
+For production/startup procedures, environment variables, health/readiness contracts, scoreboard backup/reset, restart behavior, and troubleshooting, see:
+
+- [`docs/DEPLOYMENT_RUNBOOK_ALPHA.md`](docs/DEPLOYMENT_RUNBOOK_ALPHA.md)
+
+Quick validation commands:
 
 ```bash
 npm run check
 node --test
 npm test
+npm run lint
 ```
-
-Supported environment variables:
-
-- `PORT` (default `3000`)
-- `BASE_PATH` (default `/`)
-- `SCOREBOARD_PATH` (override persisted scoreboard JSON path)
-- `DEBUG_LOG`, `DEBUG_LOG_VERBOSE`, `DEBUG_LOG_FILE`
-
-Operational notes:
-
-- Deployment is currently single-instance for alpha.
-- Active rooms and resume sessions are in-memory and are lost on server restart.
-- Scoreboard persistence depends on durable filesystem storage.
-- Startup logs now print URL, `PORT`, `BASE_PATH`, Socket.IO path, and health/readiness endpoints for deployment verification.
-- `GET /api/health` returns safe runtime metadata (`status`, `version`, `uptimeSeconds`, `timestamp`, `basePath`, `socketPath`).
-- `GET /api/readiness` reports basic local readiness for scoreboard persistence without exposing raw filesystem paths.
 
 ## Project Structure
 

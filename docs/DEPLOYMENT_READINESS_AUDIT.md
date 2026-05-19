@@ -2,6 +2,13 @@
 
 ## Scope and intent
 
+## Phase G3 follow-up
+
+Phase G3 finalizes operator-facing startup/deployment documentation in:
+- `docs/DEPLOYMENT_RUNBOOK_ALPHA.md`
+
+This preserves the Phase G1/G2 alpha deployment contract while consolidating day-2 run procedures and troubleshooting into a single runbook.
+
 This Phase G1 audit is **documentation-first** and **safety-first**. It defines the current deployment contract for alpha without broad infrastructure changes.
 
 This document does **not** introduce Docker, hosted database setup, CI/CD, reverse proxy config lock-in, gameplay changes, mutator changes, move legality changes, room lifecycle contract changes, turn-clock changes, bot behavior changes, or Socket.IO contract changes.
