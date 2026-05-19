@@ -479,3 +479,8 @@ Final master checklist:
 ### Phase H2 completion note (manual QA session execution logging)
 - [x] Added `docs/QA_PLAYTEST_EXECUTION_LOG_TEMPLATE.md` as the fillable per-session manual QA execution log and playtest results template.
 - [x] Linked Phase H1 master checklist to the Phase H2 execution log template for repeatable alpha/RC evidence capture.
+
+
+### Phase H3 completion note (automated regression/stress audit planning)
+- [x] Added `docs/AUTOMATED_REGRESSION_STRESS_AUDIT.md` with current automated test inventory, H1-risk coverage map, ranked high-risk gaps, and deterministic stress-test guardrails.
+- [x] Defined a phased follow-up test PR plan (H3A-H3E) prioritizing deterministic regression safety before bounded seeded stress expansion.
