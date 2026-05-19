@@ -470,3 +470,8 @@ Final master checklist:
 - [ ] Manual scenarios pass for each major mode.
 - [ ] Known-issues list exists and release notes are prepared.
 - [ ] RC criteria in Section 11 are all satisfied.
+
+
+### Phase H1 completion note (QA/playtesting planning)
+- [x] Added `docs/QA_PLAYTESTING_MASTER_CHECKLIST.md` as the master alpha/RC QA gate and playtesting matrix reference.
+- [x] Defined alpha-blocking vs non-blocking criteria and deferred/future scope markers for rematch, spectator/stream hardening, profiles/stats, and infra.
