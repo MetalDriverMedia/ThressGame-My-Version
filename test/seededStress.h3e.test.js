@@ -33,6 +33,7 @@ function createHarnessRoom(seed) {
   room.addPlayer(white);
   room.addPlayer(black);
   room.startGame();
+  room.manualCoinFlip = true; // mark harness games as non-counted for scoreboard safety
   room.mutatorState = room.mutatorState || { activeRules: [] };
   const io = {
     roomEvents: [],
@@ -59,8 +60,9 @@ function assertCommonInvariants(ctx, seed, step) {
   assert.ok(['waiting', 'active', 'ended'].includes(room.status), `seed=${seed} step=${step} invalid status=${room.status}`);
   const endedEvents = io.roomEvents.filter((e) => e.name === 'gameEnded' && e.roomCode === room.roomCode);
   assert.ok(endedEvents.length <= 1, `seed=${seed} step=${step} duplicate gameEnded count=${endedEvents.length}`);
-  if (room.mutatorState?.pendingAction?.owner) {
-    assert.ok(['w', 'b'].includes(room.mutatorState.pendingAction.owner), `seed=${seed} step=${step} pending owner invalid`);
+  const pendingOwner = room.mutatorState?.pendingAction?.owner || room.mutatorState?.pendingAction?.forPlayer;
+  if (pendingOwner) {
+    assert.ok(['w', 'b'].includes(pendingOwner), `seed=${seed} step=${step} pending owner invalid`);
   }
   if (room.white) {
     assert.equal(room.white.token, white.token, `seed=${seed} step=${step} white token changed unexpectedly`);
@@ -115,6 +117,8 @@ function runTerminalIdempotencyStep(ctx, rng) {
   terminal();
   const endedEvents = io.roomEvents.filter((e) => e.name === 'gameEnded' && e.roomCode === room.roomCode);
   assert.equal(endedEvents.length, 1, 'terminal idempotency should emit once');
+  const scoreboardEvents = io.roomEvents.filter((e) => e.name === 'scoreboardUpdate');
+  assert.equal(scoreboardEvents.length, 0, 'terminal idempotency harness must not emit scoreboardUpdate');
 }
 
 const seeds = parseStressSeeds(process.env.THRESS_STRESS_SEEDS);
