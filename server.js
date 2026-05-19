@@ -27,6 +27,7 @@ const normalizedPort = Number.parseInt(rawPort, 10);
 const PORT = Number.isInteger(normalizedPort) && normalizedPort > 0 ? normalizedPort : 3000;
 const BASE_PATH = formatBasePath(process.env.BASE_PATH);
 const SOCKET_PATH = buildSocketPath(BASE_PATH);
+const APP_VERSION = require('./package.json').version;
 
 // --- Express Setup -----------------------------------------------------------
 
@@ -291,5 +292,5 @@ function flushAndLog(signalName) {
 }
 
 process.once('beforeExit', () => flushAndLog('beforeExit'));
-process.once('SIGINT', () => flushAndLog('SIGINT'));
-process.once('SIGTERM', () => flushAndLog('SIGTERM'));
+process.prependListener('SIGINT', () => flushAndLog('SIGINT'));
+process.prependListener('SIGTERM', () => flushAndLog('SIGTERM'));
