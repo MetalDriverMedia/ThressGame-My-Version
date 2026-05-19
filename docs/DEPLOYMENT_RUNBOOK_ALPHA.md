@@ -75,11 +75,11 @@ Recommended process-manager strategy for alpha:
 
 ### `PORT` behavior (including `PORT=0`)
 
-- `PORT` is parsed as a positive integer when valid.
-- Invalid/non-positive values are normalized to `3000`.
-- `PORT=0` is intentionally supported for smoke tests and ephemeral binding.
-  - Node binds an available open port.
-  - Startup logs print the *actual bound port* for operator verification.
+- Positive integer `PORT` values bind to that explicit port.
+- `PORT=0` is valid and intentionally supported for smoke tests/ephemeral binding.
+  - Node binds an available free port.
+- Negative, non-numeric, empty, or otherwise invalid `PORT` values fall back to `3000`.
+- Startup logs print the *actual bound port* for operator verification.
 
 ## 5) BASE_PATH behavior
 
