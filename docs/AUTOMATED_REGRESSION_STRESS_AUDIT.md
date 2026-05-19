@@ -119,6 +119,12 @@ Randomized testing policy:
 
 ## Suggested follow-up PR sequence
 
+### H3A completion note (2026-05-19)
+- Added deterministic disconnect/resume ownership coverage for active-room resume token ownership, invalid token rejection, and pending-owner stability through reconnect.
+- Added deterministic scoreboard eligibility matrix basics validating counted default HvH outcomes vs non-counted bot/custom/manual-coin/quiet-resign outcomes.
+- H3A intentionally leaves broader game-end idempotency race suites for H3C and broader churn/watchdog loops for H3B/H3D/H3E.
+
+
 - **H3A**: deterministic regression gap fills (disconnect/resume ownership + scoreboard eligibility matrix basics).
 - **H3B**: pending-flow watchdog tests (stuck prompt prevention + unauthorized actor rejection).
 - **H3C**: game-end/idempotency tests (single `gameEnded`, no post-end writes/moves).
