@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const SCOREBOARD_PATH = path.join(__dirname, '..', 'data', 'scoreboard.json');
+const SCOREBOARD_PATH = process.env.SCOREBOARD_PATH
+  ? path.resolve(process.env.SCOREBOARD_PATH)
+  : path.join(__dirname, '..', 'data', 'scoreboard.json');
+const SCOREBOARD_DIR = path.dirname(SCOREBOARD_PATH);
+const BACKUP_DIR = path.join(SCOREBOARD_DIR, 'backups');
 const MAX_ENTRIES = 5000;
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -30,6 +34,16 @@ function normalizeEntry(entry) {
   };
 }
 
+function getNormalizedScoresMap() {
+  const normalized = {};
+  for (const [hash, entry] of Object.entries(scores)) {
+    const safeEntry = normalizeEntry(entry);
+    if (!safeEntry) continue;
+    normalized[hash] = safeEntry;
+  }
+  return normalized;
+}
+
 function load() {
   try {
     if (fs.existsSync(SCOREBOARD_PATH)) {
@@ -54,8 +68,7 @@ function load() {
 
 function saveNow() {
   try {
-    const dir = path.dirname(SCOREBOARD_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(SCOREBOARD_DIR)) fs.mkdirSync(SCOREBOARD_DIR, { recursive: true });
     fs.writeFileSync(SCOREBOARD_PATH, JSON.stringify(scores, null, 2));
   } catch (err) {
     console.warn('[scoreboard] Failed to save:', err.message);
@@ -136,6 +149,39 @@ function getPlayerScore(hash) {
   return scores[hash] || null;
 }
 
+function exportScoreboard() {
+  const normalizedScores = getNormalizedScoresMap();
+  const players = Object.entries(normalizedScores)
+    .map(([hash, data]) => ({ hash, ...data }))
+    .sort((a, b) => b.score - a.score || b.wins - a.wins || b.lastPlayed - a.lastPlayed);
+
+  return {
+    exportedAt: new Date().toISOString(),
+    entryCount: players.length,
+    players,
+  };
+}
+
+function createScoreboardBackup() {
+  const payload = exportScoreboard();
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
+  const filePath = path.join(BACKUP_DIR, `scoreboard-${timestamp}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+  return filePath;
+}
+
+function resetScoreboard({ backupFirst = true } = {}) {
+  flushSaves();
+  let backupPath = null;
+  if (backupFirst) {
+    backupPath = createScoreboardBackup();
+  }
+  scores = {};
+  saveNow();
+  return { backupPath, scorePath: SCOREBOARD_PATH };
+}
+
 // Returns 1, 2, 3 for top 3 players, or 0 if not in top 3
 function getPlayerRank(hash) {
   if (!scores[hash]) return 0;
@@ -176,4 +222,17 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-module.exports = { recordWin, recordLoss, recordDraw, getTop, getPlayerScore, getPlayerRank, getGoldLead, prune, flushSaves };
+module.exports = {
+  recordWin,
+  recordLoss,
+  recordDraw,
+  getTop,
+  getPlayerScore,
+  getPlayerRank,
+  getGoldLead,
+  prune,
+  flushSaves,
+  exportScoreboard,
+  createScoreboardBackup,
+  resetScoreboard,
+};
