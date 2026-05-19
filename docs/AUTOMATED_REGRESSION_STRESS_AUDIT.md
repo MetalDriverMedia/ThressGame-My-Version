@@ -124,6 +124,12 @@ Randomized testing policy:
 - Added deterministic scoreboard eligibility matrix basics validating counted default HvH outcomes vs non-counted bot/custom/manual-coin/quiet-resign outcomes.
 - H3A intentionally leaves broader game-end idempotency race suites for H3C and broader churn/watchdog loops for H3B/H3D/H3E.
 
+### H3B completion note (2026-05-19)
+- Added deterministic pending-flow watchdog coverage for stale/missing `pendingAction` no-op handling in `mutatorActionResponse`.
+- Added deterministic watchdog coverage for unauthorized second-action responder rejection, pending owner stability, and valid owner resolution clearing `pendingSecondAction` exactly once.
+- H3B intentionally defers additional pending-flow watchdog coverage for mutator choice prompt ownership/invalid-option paths, RPS/parry duplicate/stale/non-participant paths, manual coin-flip duplicate/stale/non-owner paths, and invalid target/action payload watchdogs.
+- H3B also intentionally defers broader endgame idempotency race coverage (H3C), bounded reconnect/bot churn loops (H3D), and optional seeded stress harness work (H3E).
+
 
 - **H3A**: deterministic regression gap fills (disconnect/resume ownership + scoreboard eligibility matrix basics).
 - **H3B**: pending-flow watchdog tests (stuck prompt prevention + unauthorized actor rejection).
