@@ -23,6 +23,8 @@ test('server startup smoke: boots and logs startup banner', async (t) => {
     stderr += chunk.toString();
   });
 
+  let skippedForMissingDeps = false;
+
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       child.kill('SIGTERM');
@@ -44,6 +46,7 @@ test('server startup smoke: boots and logs startup banner', async (t) => {
       clearTimeout(timeout);
       if (stderr.includes("Cannot find module 'express'")) {
         clearTimeout(timeout);
+        skippedForMissingDeps = true;
         t.skip('startup smoke skipped: dependencies not installed in this environment');
         resolve();
         return;
@@ -51,6 +54,8 @@ test('server startup smoke: boots and logs startup banner', async (t) => {
       reject(new Error(`server exited before startup banner. code=${code} signal=${signal}\nstdout=${stdout}\nstderr=${stderr}`));
     });
   });
+
+  if (skippedForMissingDeps) return;
 
   assert.match(stdout, /\[startup\] Thress/);
   assert.equal(stderr.includes('ReferenceError: APP_VERSION is not defined'), false);
