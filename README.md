@@ -26,7 +26,7 @@ Play at [playanarchychess.com](https://playanarchychess.com).
 ```bash
 git clone https://github.com/your-username/chess.git
 cd chess
-npm install
+npm ci
 ```
 
 ### Environment Variables
@@ -44,6 +44,28 @@ BASE_PATH=/chess
 npm start        # production
 npm run dev      # development (auto-reload)
 ```
+
+
+### Deployment & Validation (Alpha)
+
+```bash
+npm run check
+node --test
+npm test
+```
+
+Supported environment variables:
+
+- `PORT` (default `3000`)
+- `BASE_PATH` (default `/`)
+- `SCOREBOARD_PATH` (override persisted scoreboard JSON path)
+- `DEBUG_LOG`, `DEBUG_LOG_VERBOSE`, `DEBUG_LOG_FILE`
+
+Operational notes:
+
+- Deployment is currently single-instance for alpha.
+- Active rooms and resume sessions are in-memory and are lost on server restart.
+- Scoreboard persistence depends on durable filesystem storage.
 
 ## Project Structure
 
