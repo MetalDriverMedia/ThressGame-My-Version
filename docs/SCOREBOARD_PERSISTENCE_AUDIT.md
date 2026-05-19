@@ -180,3 +180,28 @@ This Phase F audit PR does not intentionally change:
 - Balance/scoring formulas
 
 Only documentation plus narrow scoreboard persistence hardening for malformed persisted data were added.
+
+
+## Phase F2 operational tooling (safe reset/export)
+
+This follow-up adds **local operational tooling only** for scoreboard export/reset, with safe defaults and no public gameplay route changes.
+
+### Added admin tooling
+
+- `scripts/scoreboard-admin.js`
+  - `node scripts/scoreboard-admin.js export [--out <path>]`
+    - Exports sanitized scoreboard data (`hash`, `name`, `score`, `wins`, `losses`, `draws`, `lastPlayed`) and metadata (`exportedAt`, `entryCount`).
+  - `node scripts/scoreboard-admin.js reset [--no-backup]`
+    - Resets scoreboard to `{}`.
+    - Creates timestamped backup by default unless `--no-backup` is provided.
+
+### Backup behavior
+
+- Backups are written to `data/backups/scoreboard-<ISO timestamp>.json` by default.
+- Reset is safe when `data/scoreboard.json` is missing; a valid empty scoreboard file is created.
+
+### Safety model
+
+- No new public/unauthenticated HTTP reset route was added.
+- Export output does not include raw browser IDs or IP addresses.
+- Tooling operates on existing hashed scoreboard keys only.
