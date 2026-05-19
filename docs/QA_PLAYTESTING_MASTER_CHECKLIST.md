@@ -8,6 +8,7 @@ This document is **documentation-first** and does **not** change gameplay, mutat
 
 Use alongside:
 - `docs/QA_PLAYTEST_EXECUTION_LOG_TEMPLATE.md` (fillable session execution/results log)
+- `docs/AUTOMATED_REGRESSION_STRESS_AUDIT.md` (Phase H3 automated coverage inventory, gaps, and safe stress/regression follow-up plan)
 - `docs/DEPLOYMENT_RUNBOOK_ALPHA.md`
 - `docs/DEPLOYMENT_READINESS_AUDIT.md`
 - `docs/SCOREBOARD_PERSISTENCE_AUDIT.md`
