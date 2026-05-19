@@ -132,6 +132,16 @@ Randomized testing policy:
 - H3C intentionally defers broader bounded reconnect/bot churn loops (H3D) and optional seeded stress harness work (H3E).
 
 
+
+
+### H3E completion note (2026-05-19)
+- Added a narrow deterministic seeded stress harness at `test/seededStress.h3e.test.js` with helper utilities in `test/helpers/seededStressTestHelpers.js`.
+- Default bounded run is fixed to seeds `101,202,303` and `6` steps per seed (18 total deterministic steps in default gate).
+- Seed replay override: `THRESS_STRESS_SEEDS=123,456 node --test test/seededStress.h3e.test.js`.
+- Extended local bounded mode: `THRESS_STRESS_EXTENDED=1 node --test test/seededStress.h3e.test.js` (12 steps per seed).
+- Harness covers reconnect churn replay, bot scheduling replay guards, and terminal idempotency replay with seed-visible assertion messages for reproducibility.
+- No unbounded fuzzing, no long-running soak loops, no browser/E2E dependencies, and no gameplay/runtime contract changes were introduced.
+
 ### H3D completion note (2026-05-19)
 - Added bounded deterministic bot loop safety coverage for repeated bot scheduling on the same state (no duplicate applied moves), no-op behavior when game status is ended before a scheduled callback fires, and no-op behavior when bot turn ownership changes before callback execution.
 - Added bounded deterministic reconnect churn coverage (fixed 3-4 iteration loops) for repeated disconnect/resume of the same active player, preserving side/color and socket/token room mappings while rejecting stale/invalid resume ownership attempts.
