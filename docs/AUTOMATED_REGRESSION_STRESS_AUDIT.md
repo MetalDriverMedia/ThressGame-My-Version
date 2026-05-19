@@ -124,6 +124,13 @@ Randomized testing policy:
 - Added deterministic scoreboard eligibility matrix basics validating counted default HvH outcomes vs non-counted bot/custom/manual-coin/quiet-resign outcomes.
 - H3A intentionally leaves broader game-end idempotency race suites for H3C and broader churn/watchdog loops for H3B/H3D/H3E.
 
+### H3C completion note (2026-05-19)
+- Added deterministic game-end idempotency tests for `emitGameEnded` single-emit contract, including duplicate-call suppression and single scoreboard update behavior.
+- Added deterministic competing-terminal-path coverage (checkmate→timeout, timeout→resignation, king-destroyed→checkmate) to enforce one terminal emission and no second scoreboard write.
+- Added deterministic post-end move safety and stale turn-clock timeout callback checks to ensure ended rooms do not produce extra terminal side effects.
+- No gameplay/runtime bug fix was required; current implementation already satisfied the H3C idempotency invariants under these scenarios.
+- H3C intentionally defers broader bounded reconnect/bot churn loops (H3D) and optional seeded stress harness work (H3E).
+
 ### H3B completion note (2026-05-19)
 - Added deterministic pending-flow watchdog coverage for stale/missing `pendingAction` no-op handling in `mutatorActionResponse`.
 - Added deterministic watchdog coverage for unauthorized second-action responder rejection, pending owner stability, and valid owner resolution clearing `pendingSecondAction` exactly once.
