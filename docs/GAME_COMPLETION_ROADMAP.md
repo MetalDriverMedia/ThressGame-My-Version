@@ -475,3 +475,7 @@ Final master checklist:
 ### Phase H1 completion note (QA/playtesting planning)
 - [x] Added `docs/QA_PLAYTESTING_MASTER_CHECKLIST.md` as the master alpha/RC QA gate and playtesting matrix reference.
 - [x] Defined alpha-blocking vs non-blocking criteria and deferred/future scope markers for rematch, spectator/stream hardening, profiles/stats, and infra.
+
+### Phase H2 completion note (manual QA session execution logging)
+- [x] Added `docs/QA_PLAYTEST_EXECUTION_LOG_TEMPLATE.md` as the fillable per-session manual QA execution log and playtest results template.
+- [x] Linked Phase H1 master checklist to the Phase H2 execution log template for repeatable alpha/RC evidence capture.

@@ -7,6 +7,7 @@ This checklist is the **master alpha/RC validation guide** for Phase H1. It cons
 This document is **documentation-first** and does **not** change gameplay, mutator behavior, move legality, scoring eligibility, room lifecycle internals, turn clocks, bot behavior, or Socket.IO event contracts.
 
 Use alongside:
+- `docs/QA_PLAYTEST_EXECUTION_LOG_TEMPLATE.md` (fillable session execution/results log)
 - `docs/DEPLOYMENT_RUNBOOK_ALPHA.md`
 - `docs/DEPLOYMENT_READINESS_AUDIT.md`
 - `docs/SCOREBOARD_PERSISTENCE_AUDIT.md`
