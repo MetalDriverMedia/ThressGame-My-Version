@@ -299,6 +299,92 @@ test('emitGameEnded and repeated terminal checks do not emit duplicate gameEnded
   const endedEvents = ctx.roomEvents.filter((e) => e.name === 'gameEnded');
   assert.equal(endedEvents.length, 1);
 });
+
+
+test('emitGameEnded is idempotent: single emit and single scoreboard write', () => {
+  const ctx = createActiveRoom({ roomCode: 'ENDIDEM1' });
+  ctx.room.manualCoinFlip = false;
+
+  const first = emitGameEnded(ctx.io, ctx.room, 'checkmate', 'w');
+  const second = emitGameEnded(ctx.io, ctx.room, 'timeout', 'b');
+
+  const endedEvents = ctx.roomEvents.filter((e) => e.name === 'gameEnded');
+  const scoreboardEvents = ctx.roomEvents.filter((e) => e.name === 'scoreboardUpdate');
+  assert.equal(first, true);
+  assert.equal(second, false);
+  assert.equal(endedEvents.length, 1);
+  assert.equal(endedEvents[0].payload.reason, 'checkmate');
+  assert.equal(scoreboardEvents.length, 1);
+});
+
+test('competing terminal paths cannot emit a second gameEnded', () => {
+  withCapturedTimers(() => {
+    const checkmateThenTimeout = createActiveRoom({ roomCode: 'ENDPATH1', mutatorsEnabled: false, manualCoinFlip: false });
+    checkmateThenTimeout.room.endGame('checkmate', 'w');
+    assert.equal(emitGameEnded(checkmateThenTimeout.io, checkmateThenTimeout.room, 'checkmate', 'w'), true);
+    assert.equal(emitGameEnded(checkmateThenTimeout.io, checkmateThenTimeout.room, 'timeout', 'w'), false);
+
+    const timeoutThenResign = createActiveRoom({ roomCode: 'ENDPATH2', manualCoinFlip: false });
+    timeoutThenResign.room.endGame('timeout', 'b');
+    assert.equal(emitGameEnded(timeoutThenResign.io, timeoutThenResign.room, 'timeout', 'b'), true);
+    assert.equal(emitGameEnded(timeoutThenResign.io, timeoutThenResign.room, 'resignation', 'b'), false);
+
+    const kingDestroyedThenCheckmate = createActiveRoom({ roomCode: 'ENDPATH3', manualCoinFlip: false, fen: '4k3/8/8/8/8/8/8/8 w - - 0 1' });
+    assert.equal(checkKingDestroyed(kingDestroyedThenCheckmate.room, kingDestroyedThenCheckmate.io, kingDestroyedThenCheckmate.gameManager), true);
+    assert.equal(emitGameEnded(kingDestroyedThenCheckmate.io, kingDestroyedThenCheckmate.room, 'checkmate', 'b'), false);
+
+    for (const scenario of [checkmateThenTimeout, timeoutThenResign, kingDestroyedThenCheckmate]) {
+      assert.equal(scenario.roomEvents.filter((e) => e.name === 'gameEnded').length, 1);
+      assert.equal(scenario.room.status, 'ended');
+      assert.equal(scenario.roomEvents.filter((e) => e.name === 'scoreboardUpdate').length, 1);
+    }
+  });
+});
+
+test('post-end move attempt is rejected/no-op with no extra terminal side effects', async () => {
+  await withCapturedTimers(async () => {
+    const { gameManager, room, io, whiteSocket, blackSocket, roomEvents } = createActiveRoom({ roomCode: 'ENDPOST1', mutatorsEnabled: false, manualCoinFlip: false });
+
+    await handleMove(io, whiteSocket, gameManager, { from: 'f2', to: 'f3' });
+    await handleMove(io, blackSocket, gameManager, { from: 'e7', to: 'e5' });
+    await handleMove(io, whiteSocket, gameManager, { from: 'g2', to: 'g4' });
+    await handleMove(io, blackSocket, gameManager, { from: 'd8', to: 'h4' });
+
+    const endedBefore = roomEvents.filter((e) => e.name === 'gameEnded').length;
+    const scoreboardBefore = roomEvents.filter((e) => e.name === 'scoreboardUpdate').length;
+
+    const result = await handleMove(io, whiteSocket, gameManager, { from: 'e2', to: 'e4' });
+
+    assert.equal(result.status, 'ignored');
+    assert.equal(result.reason, 'gameNotActive');
+    assert.equal(room.status, 'ended');
+    assert.equal(roomEvents.filter((e) => e.name === 'gameEnded').length, endedBefore);
+    assert.equal(roomEvents.filter((e) => e.name === 'scoreboardUpdate').length, scoreboardBefore);
+    assert.equal(room.chess.get('e2')?.type, 'p');
+    assert.equal(room.chess.get('e4'), undefined);
+  });
+});
+
+test('turn-clock stale timeout callback after game end cannot emit another terminal event', () => {
+  withCapturedTimers(({ scheduled }) => {
+    const ctx = createActiveRoom({ roomCode: 'ENDCLK1', manualCoinFlip: false });
+    turnClock.startClock(ctx.room, ctx.io);
+    const timer = ctx.room._turnExpireTimer;
+    const onTimeout = require('../utils/gameLifecycle').autoResignOnTimeout;
+    turnClock.setTimeoutResignHandler((room, io, stallingColor) => onTimeout(room, io, ctx.gameManager, stallingColor));
+
+    assert.equal(emitGameEnded(ctx.io, ctx.room, 'checkmate', 'w'), true);
+    ctx.room.endGame('checkmate', 'w');
+
+    timer.cb(...timer.args);
+
+    assert.equal(ctx.roomEvents.filter((e) => e.name === 'gameEnded').length, 1);
+    assert.equal(ctx.roomEvents.filter((e) => e.name === 'scoreboardUpdate').length, 1);
+    assert.equal(ctx.room.status, 'ended');
+    assert.ok(scheduled.length >= 1);
+  });
+});
+
 test('emitGameEnded payload stability for draw and winner, with cleanup of timers/offers', () => {
   const draw = createActiveRoom({ roomCode: 'ENDE1' });
   draw.room.quietResignFor = 'b';
