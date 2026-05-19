@@ -611,3 +611,60 @@ test('handleResume clears disconnect timer and keeps session mapped to current r
     global.clearTimeout = originalClear;
   }
 });
+
+
+test('handleResume rejects invalid token and cannot steal active ownership', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const white = createPlayer('own-w', 'White', 'own-h1', 'w', false);
+  const black = createPlayer('own-b', 'Black', 'own-h2', 'b', false);
+  room.addPlayer(white);
+  room.addPlayer(black);
+  room.startGame();
+  manager.setSocketRoom('own-w', room.roomCode);
+  manager.setSocketRoom('own-b', room.roomCode);
+  manager.setTokenRoom(white.token, room.roomCode);
+  manager.setTokenRoom(black.token, room.roomCode);
+
+  const badSocket = createSocket('own-bad');
+  handleResume(io, badSocket, manager, { token: 'not-a-real-token' });
+  assert.equal(badSocket.emitted.at(-1).name, 'resumeRejected');
+  assert.equal(white.socketId, 'own-w');
+  assert.equal(black.socketId, 'own-b');
+  assert.equal(room.white.color, 'w');
+  assert.equal(room.black.color, 'b');
+});
+
+test('handleResume preserves player side and pending owner state', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const white = createPlayer('pend-w', 'White', 'pend-h1', 'w', false);
+  const black = createPlayer('pend-b', 'Black', 'pend-h2', 'b', false);
+  room.addPlayer(white);
+  room.addPlayer(black);
+  room.startGame();
+  room.mutatorState.pendingChoice = { chooser: 'w', options: [{ id: 'parry', name: 'Parry', description: '', flavor: '', duration: 3 }] };
+  manager.setSocketRoom('pend-w', room.roomCode);
+  manager.setSocketRoom('pend-b', room.roomCode);
+  manager.setTokenRoom(white.token, room.roomCode);
+  manager.setTokenRoom(black.token, room.roomCode);
+
+  handleDisconnect(io, { id: 'pend-w' }, manager, createBroadcastSpy());
+  assert.equal(room.white.active, false);
+
+  const resumeSocket = createSocket('pend-w-new');
+  handleResume(io, resumeSocket, manager, { token: white.token });
+
+  const resumePayload = resumeSocket.emitted.at(-1).payload;
+  assert.equal(resumeSocket.emitted.at(-1).name, 'resumeSuccess');
+  assert.equal(resumePayload.color, 'w');
+  assert.equal(resumePayload.white.color, 'w');
+  assert.equal(resumePayload.black.color, 'b');
+  assert.equal(resumePayload.status, 'active');
+  assert.equal(room.mutatorState.pendingChoice.chooser, 'w');
+  assert.equal(room.white.socketId, 'pend-w-new');
+  assert.equal(room.white.color, 'w');
+  assert.equal(room.black.color, 'b');
+});

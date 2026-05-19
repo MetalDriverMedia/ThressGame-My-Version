@@ -484,3 +484,8 @@ Final master checklist:
 ### Phase H3 completion note (automated regression/stress audit planning)
 - [x] Added `docs/AUTOMATED_REGRESSION_STRESS_AUDIT.md` with current automated test inventory, H1-risk coverage map, ranked high-risk gaps, and deterministic stress-test guardrails.
 - [x] Defined a phased follow-up test PR plan (H3A-H3E) prioritizing deterministic regression safety before bounded seeded stress expansion.
+
+
+## H3A completion note (2026-05-19)
+- Deterministic regression gap fills added for reconnect/resume ownership basics and scoreboard eligibility matrix basics.
+- Deferred by design: expanded terminal-path idempotency races (H3C) and larger churn/watchdog loop suites (H3B/H3D/H3E).
