@@ -51,6 +51,7 @@ npm run dev      # development (auto-reload)
 For production/startup procedures, environment variables, health/readiness contracts, scoreboard backup/reset, restart behavior, and troubleshooting, see:
 
 - [`docs/DEPLOYMENT_RUNBOOK_ALPHA.md`](docs/DEPLOYMENT_RUNBOOK_ALPHA.md)
+- [`docs/QA_PLAYTESTING_MASTER_CHECKLIST.md`](docs/QA_PLAYTESTING_MASTER_CHECKLIST.md)
 
 Quick validation commands:
 
