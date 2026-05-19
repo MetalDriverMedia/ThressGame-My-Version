@@ -131,6 +131,14 @@ Randomized testing policy:
 - No gameplay/runtime bug fix was required; current implementation already satisfied the H3C idempotency invariants under these scenarios.
 - H3C intentionally defers broader bounded reconnect/bot churn loops (H3D) and optional seeded stress harness work (H3E).
 
+
+### H3D completion note (2026-05-19)
+- Added bounded deterministic bot loop safety coverage for repeated bot scheduling on the same state (no duplicate applied moves), no-op behavior when game status is ended before a scheduled callback fires, and no-op behavior when bot turn ownership changes before callback execution.
+- Added bounded deterministic reconnect churn coverage (fixed 3-4 iteration loops) for repeated disconnect/resume of the same active player, preserving side/color and socket/token room mappings while rejecting stale/invalid resume ownership attempts.
+- Added reconnect churn coverage with a deterministic pendingAction fixture, asserting pending owner stability and that reconnect does not resolve/clear pending state or allow unauthorized ownership takeover.
+- Existing disconnect timer tests already covered stale cleanup callback safety after room replacement and reconnect timer clearing; no runtime bug fix was required for H3D.
+- H3D intentionally defers seeded stress harness work (extended bounded scenario matrices with captured/replayed seeds) to H3E.
+
 ### H3B completion note (2026-05-19)
 - Added deterministic pending-flow watchdog coverage for stale/missing `pendingAction` no-op handling in `mutatorActionResponse`.
 - Added deterministic watchdog coverage for unauthorized second-action responder rejection, pending owner stability, and valid owner resolution clearing `pendingSecondAction` exactly once.
