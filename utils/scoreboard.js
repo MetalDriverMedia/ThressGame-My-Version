@@ -44,6 +44,34 @@ function getNormalizedScoresMap() {
   return normalized;
 }
 
+function getScoreboardStatus() {
+  let exists = false;
+  let directoryWritable = false;
+
+  try {
+    exists = fs.existsSync(SCOREBOARD_PATH);
+  } catch (_err) {
+    exists = false;
+  }
+
+  try {
+    if (!fs.existsSync(SCOREBOARD_DIR)) {
+      fs.mkdirSync(SCOREBOARD_DIR, { recursive: true });
+    }
+    fs.accessSync(SCOREBOARD_DIR, fs.constants.W_OK);
+    directoryWritable = true;
+  } catch (_err) {
+    directoryWritable = false;
+  }
+
+  return {
+    configured: Boolean(SCOREBOARD_PATH),
+    hasCustomPath: Boolean(process.env.SCOREBOARD_PATH),
+    fileExists: exists,
+    isDirectoryWritable: directoryWritable,
+  };
+}
+
 function load() {
   try {
     if (fs.existsSync(SCOREBOARD_PATH)) {
@@ -235,4 +263,5 @@ module.exports = {
   exportScoreboard,
   createScoreboardBackup,
   resetScoreboard,
+  getScoreboardStatus,
 };

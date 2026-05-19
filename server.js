@@ -22,7 +22,9 @@ const { setupApiRoutes } = require('./routes/apiRoutes');
 
 // --- Configuration -----------------------------------------------------------
 
-const PORT = process.env.PORT || 3000;
+const rawPort = (process.env.PORT || '3000').trim();
+const normalizedPort = Number.parseInt(rawPort, 10);
+const PORT = Number.isInteger(normalizedPort) && normalizedPort > 0 ? normalizedPort : 3000;
 const BASE_PATH = formatBasePath(process.env.BASE_PATH);
 const SOCKET_PATH = buildSocketPath(BASE_PATH);
 
@@ -46,7 +48,12 @@ app.use(express.urlencoded({ extended: true }));
 registerConfigRoute(app, BASE_PATH, SOCKET_PATH);
 
 // API routes (health check, etc.) -- before static files
-app.use('/api', setupApiRoutes());
+app.use('/api', setupApiRoutes({
+  version: APP_VERSION,
+  startupTime: Date.now(),
+  basePath: BASE_PATH,
+  socketPath: SOCKET_PATH,
+}));
 
 // --- HTTP Server & Socket.IO -------------------------------------------------
 
@@ -79,7 +86,6 @@ const STATIC_DIR = path.join(__dirname, 'public');
 // on the main.js script tag and the footer version label, so browsers always
 // fetch the latest module bundle after a deploy without a manual hard-refresh.
 const fs = require('fs');
-const APP_VERSION = require('./package.json').version;
 const INDEX_PATH = path.join(STATIC_DIR, 'index.html');
 function serveIndex(_req, res) {
   fs.readFile(INDEX_PATH, 'utf8', (err, html) => {
@@ -257,16 +263,33 @@ io.on('connection', (socket) => {
 
 setInterval(() => gameManager.cleanupOldRooms(), 5 * 60 * 1000);
 
-// Flush pending scoreboard writes on process shutdown lifecycle.
-process.once('beforeExit', flushSaves);
-process.once('SIGINT', flushSaves);
-process.once('SIGTERM', flushSaves);
-
 // --- Initialization ----------------------------------------------------------
 
 // Start HTTP server
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Socket.IO path: ${SOCKET_PATH}`);
-  console.log(`Base path: ${BASE_PATH}`);
+  const publicBase = BASE_PATH === '/' ? '' : BASE_PATH;
+  const appUrl = `http://localhost:${PORT}${publicBase || '/'}`;
+  console.log(`[startup] Thress ${APP_VERSION} listening`);
+  console.log(`[startup] URL: ${appUrl}`);
+  console.log(`[startup] Port: ${PORT}${rawPort !== String(PORT) ? ` (normalized from ${JSON.stringify(rawPort)})` : ''}`);
+  console.log(`[startup] Base path: ${BASE_PATH}`);
+  console.log(`[startup] Socket.IO path: ${SOCKET_PATH}`);
+  console.log('[startup] Health endpoint: /api/health');
+  console.log('[startup] Readiness endpoint: /api/readiness');
 });
+
+const debugEnabled = process.env.DEBUG_LOG === 'true' || process.env.DEBUG_LOG === '1';
+if (debugEnabled) {
+  const hasDebugFile = Boolean(process.env.DEBUG_LOG_FILE);
+  console.log(`[startup] Debug logging enabled (verbose=${process.env.DEBUG_LOG_VERBOSE === 'true' || process.env.DEBUG_LOG_VERBOSE === '1'})`);
+  console.log(`[startup] Debug log file output: ${hasDebugFile ? 'enabled' : 'disabled'}`);
+}
+
+function flushAndLog(signalName) {
+  console.log(`[shutdown] Received ${signalName}; flushing pending scoreboard saves`);
+  flushSaves();
+}
+
+process.once('beforeExit', () => flushAndLog('beforeExit'));
+process.once('SIGINT', () => flushAndLog('SIGINT'));
+process.once('SIGTERM', () => flushAndLog('SIGTERM'));

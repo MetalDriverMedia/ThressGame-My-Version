@@ -66,6 +66,9 @@ Operational notes:
 - Deployment is currently single-instance for alpha.
 - Active rooms and resume sessions are in-memory and are lost on server restart.
 - Scoreboard persistence depends on durable filesystem storage.
+- Startup logs now print URL, `PORT`, `BASE_PATH`, Socket.IO path, and health/readiness endpoints for deployment verification.
+- `GET /api/health` returns safe runtime metadata (`status`, `version`, `uptimeSeconds`, `timestamp`, `basePath`, `socketPath`).
+- `GET /api/readiness` reports basic local readiness for scoreboard persistence without exposing raw filesystem paths.
 
 ## Project Structure
 
