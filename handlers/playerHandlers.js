@@ -33,26 +33,30 @@ function handleDisconnect(io, socket, gameManager, broadcastRoomUpdate) {
   gameManager.removeSocket(socket.id);
 
   if (room.status === 'waiting') {
+    const disconnectSocketId = socket.id;
     // In waiting room: schedule room destruction after 30s
     const timer = setTimeout(() => {
       const currentRoom = gameManager.getRoom(room.roomCode);
       if (currentRoom !== room) return;
+      if (room.disconnectTimers.get(playerColor) !== timer) return;
       room.disconnectTimers.delete(playerColor);
       // Check if player is still disconnected
       const currentPlayer = room.getPlayer(playerColor);
-      if (currentPlayer && !currentPlayer.active) {
+      if (currentPlayer && !currentPlayer.active && !currentPlayer.socketId && currentPlayer.lastDisconnectedSocketId === disconnectSocketId) {
         console.log(`[playerHandlers] Destroying waiting room ${room.roomCode} after disconnect timeout`);
         gameManager.deleteRoom(room.roomCode);
         broadcastRoomUpdate();
       }
     }, WAITING_DISCONNECT_TIMEOUT_MS);
 
+    player.lastDisconnectedSocketId = disconnectSocketId;
     room.disconnectTimers.set(playerColor, timer);
     broadcastRoomUpdate();
     return;
   }
 
   if (room.status === 'active') {
+    const disconnectSocketId = socket.id;
     const opponent = room.getOpponent(playerColor);
 
     // Notify opponent
@@ -69,10 +73,12 @@ function handleDisconnect(io, socket, gameManager, broadcastRoomUpdate) {
     const timer = setTimeout(() => {
       const currentRoom = gameManager.getRoom(room.roomCode);
       if (currentRoom !== room) return;
+      if (room.disconnectTimers.get(playerColor) !== timer) return;
       room.disconnectTimers.delete(playerColor);
       // Check if player is still disconnected
       const currentPlayer = room.getPlayer(playerColor);
-      if (!currentPlayer || currentPlayer.active) return;
+      if (!currentPlayer || currentPlayer.active || currentPlayer.socketId) return;
+      if (currentPlayer.lastDisconnectedSocketId !== disconnectSocketId) return;
       if (room.status !== 'active') return;
 
       // Player didn't reconnect -- opponent wins by forfeit
@@ -84,6 +90,7 @@ function handleDisconnect(io, socket, gameManager, broadcastRoomUpdate) {
       broadcastRoomUpdate();
     }, ACTIVE_DISCONNECT_TIMEOUT_MS);
 
+    player.lastDisconnectedSocketId = disconnectSocketId;
     room.disconnectTimers.set(playerColor, timer);
     return;
   }
@@ -175,27 +182,27 @@ function handleResume(io, socket, gameManager, data) {
   const { token } = data || {};
 
   if (!token || typeof token !== 'string') {
-    socket.emit('resumeRejected', 'Invalid resume token.');
+    socket.emit('resumeRejected', { code: 'invalid_token', message: 'Invalid resume token.', recoverable: false });
     return;
   }
 
   // Find room by token
   const room = gameManager.getRoomForToken(token);
   if (!room) {
-    socket.emit('resumeRejected', 'Session not found.');
+    socket.emit('resumeRejected', { code: 'room_deleted_or_missing', message: 'Session not found.', recoverable: false });
     return;
   }
 
   // Find player by token
   const player = room.getPlayerByToken(token);
   if (!player) {
-    socket.emit('resumeRejected', 'Player not found in room.');
+    socket.emit('resumeRejected', { code: 'invalid_token', message: 'Player not found in room.', recoverable: false });
     return;
   }
 
   // Reject if game has ended
   if (room.status === 'ended') {
-    socket.emit('resumeRejected', 'Game has ended.');
+    socket.emit('resumeRejected', { code: 'game_ended', message: 'Game has ended.', recoverable: false });
     return;
   }
 
@@ -215,6 +222,7 @@ function handleResume(io, socket, gameManager, data) {
 
   player.socketId = socket.id;
   player.active = true;
+  player.lastDisconnectedSocketId = null;
 
   gameManager.setSocketRoom(socket.id, room.roomCode);
   // Token mapping should already exist, but ensure it

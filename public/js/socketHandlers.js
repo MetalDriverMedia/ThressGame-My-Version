@@ -39,6 +39,12 @@ function buildTargetPrompt(payload, { isSecondChoice = false } = {}) {
   if (serverPrompt) return serverPrompt;
 
   const ruleName = payload?.ruleName || payload?.rule?.name || payload?.name || 'Mutator action';
+  if (payload?.actionType === 'two_pieces_same_column') {
+    if (payload?.partialData?.square1) {
+      return `${ruleName}: select a second non-king piece in file ${payload.partialData.square1[0].toUpperCase()}.`;
+    }
+    return `${ruleName}: select your first non-king piece.`;
+  }
   return isSecondChoice
     ? `${ruleName}: select your second target.`
     : `${ruleName}: select a target.`;
@@ -59,12 +65,13 @@ function cyclePageBackground() {
 
 export function onConnect() {
   console.log('[socket] Connected');
-  // If already in an active game (Socket.IO auto-reconnected), don't re-emit resume
-  if (state.isGameActive) return;
   if (state.myToken) {
     console.log('[boot] resumeSession emitted');
     state.socket.emit('resumeSession', { token: state.myToken });
     if (state.startResumeGuard) state.startResumeGuard();
+    // Always resume when token exists (including active-game reconnects) so
+    // server socket/player mappings are restored and disconnect timers can clear.
+    return;
   } else {
     // Fresh user or returned to landing — join lobby and fetch rooms immediately
     state.socket.emit('joinLobby');
@@ -399,12 +406,19 @@ export function onResumeSuccess(payload) {
 
 export function onResumeRejected(payload) {
   console.log('[boot] resumeRejected');
-  console.log('[socket] resumeRejected');
+  console.log('[socket] resumeRejected', payload);
   if (state.clearResumeGuard) state.clearResumeGuard();
+  const code = typeof payload === 'string' ? null : payload?.code;
+  const message = typeof payload === 'string'
+    ? payload
+    : (payload?.message || 'Saved session is no longer valid.');
   // Don't destroy an active game if this was a spurious resume attempt
-  if (state.isGameActive) return;
+  if (state.isGameActive || code === 'transient_race') {
+    flashStatus(message, 3000);
+    return;
+  }
   if (state.showResumeRecovery) {
-    state.showResumeRecovery('Saved session is no longer valid.');
+    state.showResumeRecovery(message);
   } else {
     clearSession();
     showLanding();

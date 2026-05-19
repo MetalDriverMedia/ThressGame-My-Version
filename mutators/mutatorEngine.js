@@ -261,6 +261,7 @@ function serializeMutatorState(mutatorState) {
       forPlayer: mutatorState.pendingAction.forPlayer,
       prompt: mutatorState.pendingAction.prompt,
       sophieOptions: mutatorState.pendingAction.sophieOptions,
+      partialData: mutatorState.pendingAction.partialData || null,
     } : null,
     pendingSecondAction: mutatorState.pendingSecondAction ? {
       ruleId: mutatorState.pendingSecondAction.ruleId,

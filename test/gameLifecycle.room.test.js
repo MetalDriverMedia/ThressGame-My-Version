@@ -630,10 +630,81 @@ test('handleResume rejects invalid token and cannot steal active ownership', () 
   const badSocket = createSocket('own-bad');
   handleResume(io, badSocket, manager, { token: 'not-a-real-token' });
   assert.equal(badSocket.emitted.at(-1).name, 'resumeRejected');
+  assert.equal(badSocket.emitted.at(-1).payload.code, 'room_deleted_or_missing');
   assert.equal(white.socketId, 'own-w');
   assert.equal(black.socketId, 'own-b');
   assert.equal(room.white.color, 'w');
   assert.equal(room.black.color, 'b');
+});
+
+test('handleDisconnect stale active timer cannot end room after a newer disconnect timer exists', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const white = createPlayer('race-w-1', 'White', 'race-h1', 'w', false);
+  const black = createPlayer('race-b-1', 'Black', 'race-h2', 'b', false);
+  room.addPlayer(white);
+  room.addPlayer(black);
+  room.startGame();
+  manager.setSocketRoom('race-w-1', room.roomCode);
+  manager.setSocketRoom('race-b-1', room.roomCode);
+  manager.setTokenRoom(white.token, room.roomCode);
+
+  const originalSet = global.setTimeout;
+  const timers = [];
+  try {
+    global.setTimeout = (cb, ms) => {
+      timers.push({ cb, ms });
+      return timers[timers.length - 1];
+    };
+
+    handleDisconnect(io, { id: 'race-w-1' }, manager, createBroadcastSpy());
+    assert.equal(timers.length, 1);
+
+    const resumeSocket = createSocket('race-w-2');
+    handleResume(io, resumeSocket, manager, { token: white.token });
+    manager.setSocketRoom('race-w-2', room.roomCode);
+    assert.equal(room.status, 'active');
+
+    handleDisconnect(io, { id: 'race-w-2' }, manager, createBroadcastSpy());
+    assert.equal(timers.length, 2);
+
+    // Old callback must no-op because a newer timer is currently active.
+    timers[0].cb();
+    assert.equal(room.status, 'active');
+    assert.equal(room.disconnectTimers.has('w'), true);
+  } finally {
+    global.setTimeout = originalSet;
+  }
+});
+
+test('handleResume includes pendingAction partialData for multi-step mutator restoration', () => {
+  const manager = new GameManager();
+  const { io } = createIoRecorder();
+  const room = manager.createRoom(false);
+  const white = createPlayer('partial-w', 'White', 'partial-h1', 'w', false);
+  const black = createPlayer('partial-b', 'Black', 'partial-h2', 'b', false);
+  room.addPlayer(white);
+  room.addPlayer(black);
+  room.startGame();
+  room.mutatorState.pendingAction = {
+    ruleId: 'moving_up_the_corporate_ladder',
+    actionType: 'two_pieces_same_column',
+    forPlayer: 'w',
+    partialData: { square1: 'a2' },
+    rule: { id: 'moving_up_the_corporate_ladder', name: 'Moving Up the Corporate Ladder', duration: null },
+  };
+  manager.setSocketRoom('partial-w', room.roomCode);
+  manager.setSocketRoom('partial-b', room.roomCode);
+  manager.setTokenRoom(white.token, room.roomCode);
+
+  handleDisconnect(io, { id: 'partial-w' }, manager, createBroadcastSpy());
+  const resumeSocket = createSocket('partial-w-2');
+  handleResume(io, resumeSocket, manager, { token: white.token });
+
+  const payload = resumeSocket.emitted.at(-1).payload;
+  assert.equal(resumeSocket.emitted.at(-1).name, 'resumeSuccess');
+  assert.deepEqual(payload.mutatorState.pendingAction.partialData, { square1: 'a2' });
 });
 
 test('handleResume preserves player side and pending owner state', () => {
