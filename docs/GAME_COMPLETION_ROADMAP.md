@@ -489,3 +489,9 @@ Final master checklist:
 ## H3A completion note (2026-05-19)
 - Deterministic regression gap fills added for reconnect/resume ownership basics and scoreboard eligibility matrix basics.
 - Deferred by design: expanded terminal-path idempotency races (H3C) and larger churn/watchdog loop suites (H3B/H3D/H3E).
+
+
+### H3E status update (2026-05-19)
+- Added an optional, bounded, deterministic seeded harness (`test/seededStress.h3e.test.js`) with fixed default seeds and fixed step limits for replayable confidence checks.
+- Added seed parsing/replay helpers (`test/helpers/seededStressTestHelpers.js`) with `THRESS_STRESS_SEEDS` and `THRESS_STRESS_EXTENDED` local override support.
+- Kept default gate short and deterministic; no unbounded fuzz/soak behavior was added.
