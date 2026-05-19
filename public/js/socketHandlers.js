@@ -65,12 +65,13 @@ function cyclePageBackground() {
 
 export function onConnect() {
   console.log('[socket] Connected');
-  // If already in an active game (Socket.IO auto-reconnected), don't re-emit resume
-  if (state.isGameActive) return;
   if (state.myToken) {
     console.log('[boot] resumeSession emitted');
     state.socket.emit('resumeSession', { token: state.myToken });
     if (state.startResumeGuard) state.startResumeGuard();
+    // Always resume when token exists (including active-game reconnects) so
+    // server socket/player mappings are restored and disconnect timers can clear.
+    return;
   } else {
     // Fresh user or returned to landing — join lobby and fetch rooms immediately
     state.socket.emit('joinLobby');
