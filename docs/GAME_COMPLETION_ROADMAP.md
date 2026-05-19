@@ -90,6 +90,13 @@ The following remain alpha-blocking until executed and recorded:
 
 ---
 
+
+## Live QA blocker note (2026-05-19)
+- **Alpha-blocking incident found during live QA:** reconnect/main-screen kick race and a freeze risk during partial `moving_up_the_corporate_ladder` target selection restore.
+- **Status:** fixed in emergency runtime/test PR with timer-identity safety hardening for disconnect callbacks plus pending-action partial-data resume restoration for multi-step mutator UI reconstruction.
+- **Impact on H4A:** keep H4A validation-evidence sequencing paused until this fix PR is merged and validated in live QA replay.
+
+---
 ## 3) Current Remaining Alpha/RC Gap Matrix
 
 | Gap / task | Status | Blocking level | Evidence / doc reference | Suggested next PR |
