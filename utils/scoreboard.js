@@ -10,10 +10,41 @@ let scores = {};
 let saveTimer = null;
 let pendingSave = false;
 
+function toNonNegativeInt(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n));
+}
+
+function normalizeEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  const name = typeof entry.name === 'string' && entry.name.trim() ? entry.name.trim() : null;
+  if (!name) return null;
+  return {
+    name,
+    score: toNonNegativeInt(entry.score),
+    wins: toNonNegativeInt(entry.wins),
+    losses: toNonNegativeInt(entry.losses),
+    draws: toNonNegativeInt(entry.draws),
+    lastPlayed: toNonNegativeInt(entry.lastPlayed) || Date.now(),
+  };
+}
+
 function load() {
   try {
     if (fs.existsSync(SCOREBOARD_PATH)) {
-      scores = JSON.parse(fs.readFileSync(SCOREBOARD_PATH, 'utf8'));
+      const parsed = JSON.parse(fs.readFileSync(SCOREBOARD_PATH, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        scores = {};
+        return;
+      }
+      const normalized = {};
+      for (const [hash, entry] of Object.entries(parsed)) {
+        const safeEntry = normalizeEntry(entry);
+        if (!safeEntry) continue;
+        normalized[hash] = safeEntry;
+      }
+      scores = normalized;
     }
   } catch (err) {
     console.warn('[scoreboard] Failed to load:', err.message);
@@ -88,13 +119,16 @@ function recordDraw(hash, name) {
 function getTop(n = 25) {
   return Object.entries(scores)
     .map(([hash, data]) => ({
+      hash,
       name: data.name,
       score: data.score,
       wins: data.wins,
       losses: data.losses,
       draws: data.draws,
     }))
+    .filter((row) => typeof row.name === 'string' && row.name.length > 0)
     .sort((a, b) => b.score - a.score || b.wins - a.wins)
+    .map(({ hash, ...row }) => row)
     .slice(0, n);
 }
 
